@@ -70,7 +70,7 @@ def logout():
 @app.route("/new_game")
 def newGame():
     if "user" in session:
-        return render_template("newGame.html")
+        return render_template("newGame.html", session=session.get("user"))
     else:
         abort(404)
 

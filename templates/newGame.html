@@ -2,9 +2,269 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Title</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>New game</title>
+    <!-- Incluir Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"/>
+    <!-- Incluir Leaflet Draw CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.draw@1.0.4/dist/leaflet.draw.css"/>
+    <style>
+        /* General Styles */
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #4facfe, #00f2fe) fixed;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            height: 100vh;
+        }
+
+        .header {
+            width: 95%;
+            background-color: #fff;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 1000;
+            border-bottom: 1px solid #e0e0e0;
+            padding: 10px 40px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .header .left {
+            flex: 1;
+            text-align: left;
+            font-size: 16px;
+            font-weight: bold;
+            color: #333;
+            margin-right: 10px;
+        }
+
+        .header .center {
+            flex: 2;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .header .center .navigation {
+            margin: 0 10px;
+            padding: 8px 16px;
+            font-size: 14px;
+            color: white;
+            background-color: #4facfe;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .header .center .navigation:hover {
+            background-color: #00c6ff;
+        }
+
+        .header .right {
+            flex: 1;
+            text-align: right;
+        }
+
+        .header .right .logout-link {
+            font-size: 14px;
+            color: #dc3545;
+            text-decoration: none;
+            font-weight: bold;
+            transition: color 0.3s ease;
+        }
+
+        .header .right .logout-link:hover {
+            color: #a71d2a;
+        }
+
+        .container {
+            background: #fff;
+            padding: 20px 30px;
+            border-radius: 10px;
+            box-shadow: 0 6px 10px rgba(0, 0, 0, 0.15);
+            max-width: 1500px;
+            width: 100%;
+            margin-top: 80px; /* Push the content below the header */
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        button {
+            width: 100%;
+            padding: 10px;
+            background-color: #4facfe;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: background 0.3s;
+            margin-bottom: 10px;
+        }
+
+        button:hover {
+            background-color: #00c6ff;
+        }
+
+        #map {
+            flex: 1;
+            width: 50%;
+            height: 500px;
+        }
+
+        .mapForm {
+            flex: 1;
+            width: 50%;
+        }
+
+        .info {
+            margin-top: 20px;
+            font-size: 16px;
+        }
+
+        .coords {
+            font-weight: bold;
+            color: #0078D4;
+        }
+
+    </style>
 </head>
 <body>
 
+<!-- Header Section -->
+<div class="header">
+    <div class="left">
+        <span class="username">{{ session.userinfo.given_name }}</span>
+    </div>
+
+    <div class="center">
+        <button class="navigation" onclick="window.location.href='/my_games'">My games</button>
+        <button class="navigation" onclick="window.location.href='/home'">Games</button>
+        <button class="navigation" onclick="window.location.href='/new_game'">Create new game</button>
+    </div>
+    <div class="right">
+        <a href="/logout" class="logout-link">Logout</a>
+    </div>
+</div>
+
+<!-- Main Content -->
+<div class="container">
+    <div id="map"></div>
+
+    <div class="info">
+        <p>Las coordenadas del área seleccionada:</p>
+        <p><span class="coords">Latitud 1: - , Longitud 1: -</span></p>
+        <p><span class="coords">Latitud 2: - , Longitud 2: -</span></p>
+    </div>
+    
+    <div id="mapForm" class="mapForm">
+        <form class="addGameForm" action="/add_game" method="POST">
+            <label>
+                <input type="text" name="name" placeholder="Game name" required>
+            </label>
+            <label>
+                <input type="number" name="xDimension" placeholder="Rectangular X dimension" required>
+            </label>
+            <label>
+                <input type="number" name="yDimension" placeholder="Rectangular Y dimension" required>
+            </label>
+            {# TODO: new form to add a cache, maybe click in map to add it #}
+
+            <button type="submit">Add game</button>
+        </form>
+    </div>
+
+
+    <!-- Incluir Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <!-- Incluir Leaflet Draw JS -->
+    <script src="https://unpkg.com/leaflet.draw@1.0.4/dist/leaflet.draw.js"></script>
+
+    <script>
+        navigator.geolocation.getCurrentPosition(function (position) {
+            var lat = position.coords.latitude;
+            var lon = position.coords.longitude;
+
+            initMap(lat, lon);
+        }, function (error) {
+            alert("No se pudo obtener la ubicación del usuario.");
+        });
+
+        function initMap(latitude, longitude) {
+            var map = L.map('map').setView([latitude, longitude], 13);
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }).addTo(map);
+
+            {#L.marker([latitude, longitude]).addTo(map)#}
+            {#    .bindPopup("Tu ubicación")#}
+            {#    .openPopup();#}
+
+            // Crear el control de dibujo
+            var drawnItems = new L.FeatureGroup();
+            map.addLayer(drawnItems);
+
+            var drawControl = new L.Control.Draw({
+                edit: {
+                    featureGroup: drawnItems
+                },
+                draw: {
+                    rectangle: true, // Habilitar el dibujo de rectángulos
+                    polygon: false,  // Deshabilitar el dibujo de polígonos
+                    polyline: false, // Deshabilitar el dibujo de líneas
+                    circle: false,   // Deshabilitar el dibujo de círculos
+                    marker: false    // Deshabilitar el dibujo de marcadores
+                }
+            });
+        }
+
+        map.addControl(drawControl);
+
+        // Evento que se dispara cuando el usuario termina de dibujar un rectángulo
+        map.on('draw:created', function (event) {
+            var layer = event.layer;
+            drawnItems.addLayer(layer); // Agregar el rectángulo al mapa
+
+            // Puedes acceder a las coordenadas del rectángulo dibujado
+            var bounds = layer.getBounds();
+            console.log('Coordenadas del rectángulo:', bounds);
+        });
+
+        map.on('draw:created', function (event) {
+            var layer = event.layer;
+            drawnItems.addLayer(layer); // Agregar el rectángulo al mapa
+
+            // Obtener las coordenadas del rectángulo
+            var bounds = layer.getBounds();
+            var lat1 = bounds.getSouthWest().lat;
+            var lon1 = bounds.getSouthWest().lng;
+            var lat2 = bounds.getNorthEast().lat;
+            var lon2 = bounds.getNorthEast().lng;
+
+            // Mostrar las coordenadas en la consola
+            console.log('Coordenadas del rectángulo:');
+            console.log('Latitud 1: ' + lat1 + ', Longitud 1: ' + lon1);
+            console.log('Latitud 2: ' + lat2 + ', Longitud 2: ' + lon2);
+
+            // También puedes mostrar las coordenadas en un formulario o hacer cualquier acción con ellas
+        });
+
+    </script>
+</div>
 </body>
 </html>
