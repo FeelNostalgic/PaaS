@@ -20,7 +20,6 @@
         .header {
             width: 95%;
             background-color: #fff;
-            padding: 10px 50px;
             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
             display: flex;
             justify-content: space-between;
@@ -30,31 +29,57 @@
             left: 0;
             z-index: 1000;
             border-bottom: 1px solid #e0e0e0;
+            padding: 10px 40px;
+            border-bottom: 1px solid #e0e0e0;
         }
-        
+
+        .header .left {
+            flex: 1;
+            text-align: left;
+            font-size: 16px;
+            font-weight: bold;
+            color: #333;
+            margin-right: 10px;
+        }
+
         .header .center {
+            flex: 2;
             display: flex;
             justify-content: center;
-            align-items: center;
-            flex-grow: 1;
-            flex-shrink: 1;
-            flex-basis: 0;
-            flex-direction: row;
+            gap: 10px;
         }
 
-        .username {
-            font-weight: bold;
+        .header .center .navigation {
+            margin: 0 10px;
+            padding: 8px 16px;
+            font-size: 14px;
+            color: white;
+            background-color: #4facfe;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
         }
 
-        .header a {
-            color: #4facfe;
+        .header .center .navigation:hover {
+            background-color: #00c6ff;
+        }
+
+        .header .right {
+            flex: 1;
+            text-align: right;
+        }
+
+        .header .right .logout-link {
+            font-size: 14px;
+            color: #dc3545;
             text-decoration: none;
             font-weight: bold;
-            margin: 0 10px;
+            transition: color 0.3s ease;
         }
 
-        .header a:hover {
-            text-decoration: underline;
+        .header .right .logout-link:hover {
+            color: #a71d2a;
         }
 
         .container {
@@ -91,20 +116,6 @@
             background-color: #00c6ff;
         }
 
-        button .navigation {
-            width: 100%;
-            padding: 10px;
-            background-color: #4facfe;
-            color: white;
-            border: none;
-            border-radius: 0;
-            cursor: pointer;
-            font-size: 16px;
-            font-weight: bold;
-            transition: background 0.3s;
-            margin-bottom: 0px;
-        }
-
     </style>
 </head>
 <body>
@@ -129,9 +140,8 @@
 <div class="container">
     <h1>Welcome, {{ session.userinfo.name }}</h1>
 
-    <div class="buttons">
-
-
+    <div>
+        <pre>{{ pretty }}</pre>
     </div>
 </div>
 </body>
