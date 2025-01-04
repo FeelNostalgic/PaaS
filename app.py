@@ -1,12 +1,9 @@
 ﻿import json
 
-import requests
 from authlib.integrations.flask_client import OAuth
-from flask import Flask, abort, redirect, render_template, session, url_for, request, flash
+from flask import Flask, abort, redirect, render_template, session, url_for, request, flash, jsonify
 from dotenv import load_dotenv
 import os
-import random
-import string
 
 load_dotenv()
 
@@ -43,16 +40,12 @@ def login():
     if "user" in session:
         return redirect("/home")
     else:
-        state = ''.join(random.choices(string.ascii_letters + string.digits, k=32))
-        session['state'] = state
         return oauth.geocaching.authorize_redirect(redirect_uri=url_for('auth_callback', _external=True))
 
 @app.route('/auth/callback')
 def auth_callback():
     if "user" in session:
         return redirect("/home")
-    if request.args.get('state') != session.get('state'):
-        return  redirect("/")
     try:
         token = oauth.geocaching.authorize_access_token()
         session["user"] = token
@@ -64,9 +57,11 @@ def auth_callback():
 def logout():
     if "user" in session:
         session.pop("user", None)
+        session.pop("state", None)
         return redirect("/")
     else:
         abort(404)
+
 @app.route("/new_game")
 def newGame():
     if "user" in session:
@@ -74,11 +69,24 @@ def newGame():
     else:
         abort(404)
 
-@app.route("/add_game")
+@app.route("/add_game", methods=["POST"])
 def addGame():
     if "user" in session:
         if request.method == "POST":
-            gameName = request.form.get("gameName")
+            data = request.get_json()
+
+            gameName = data.get('gameName')
+            area = data.get('area')
+            lat1 = area.get('lat1')
+            lon1 = area.get('lon1')
+            lat2 = area.get('lat2')
+            lon2 = area.get('lon2')
+            markers = data.get('markers')
+
+            # db.save_area_and_markers(session.userinfo.sub, gameName, lat1, lon1, lat2, lon2, markers)
+
+            # Responder con un mensaje de éxito
+            return jsonify({'message': 'Datos guardados correctamente'})
     else:
         abort(404)
 

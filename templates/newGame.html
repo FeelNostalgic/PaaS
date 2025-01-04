@@ -4,10 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>New game</title>
-    <!-- Incluir Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"/>
-    <!-- Incluir Leaflet Draw CSS -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet.draw@1.0.4/dist/leaflet.draw.css"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css"/>
+
     <style>
         /* General Styles */
         body {
@@ -136,7 +135,7 @@
             font-size: 16px;
         }
 
-        .coords {
+        .coordsX, .coordsY {
             font-weight: bold;
             color: #0078D4;
         }
@@ -167,102 +166,231 @@
 
     <div class="info">
         <p>Las coordenadas del área seleccionada:</p>
-        <p><span class="coords">Latitud 1: - , Longitud 1: -</span></p>
-        <p><span class="coords">Latitud 2: - , Longitud 2: -</span></p>
+        <p><span class="coordsX">Latitud 1: - , Longitud 1: -</span></p>
+        <p><span class="coordsY">Latitud 2: - , Longitud 2: -</span></p>
     </div>
-    
+
     <div id="mapForm" class="mapForm">
-        <form class="addGameForm" action="/add_game" method="POST">
-            <label>
-                <input type="text" name="name" placeholder="Game name" required>
-            </label>
-            <label>
-                <input type="number" name="xDimension" placeholder="Rectangular X dimension" required>
-            </label>
-            <label>
-                <input type="number" name="yDimension" placeholder="Rectangular Y dimension" required>
-            </label>
+        <form class="addGameForm" action="/add_game" method="POST" id="addGameForm">
+            <label for="gameName">Game name:</label>
+                <input type="text" id="gameName" name="gameName" placeholder="Game name" required>
             {# TODO: new form to add a cache, maybe click in map to add it #}
 
             <button type="submit">Add game</button>
         </form>
     </div>
 
-
     <!-- Incluir Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
     <!-- Incluir Leaflet Draw JS -->
-    <script src="https://unpkg.com/leaflet.draw@1.0.4/dist/leaflet.draw.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
 
     <script>
-        navigator.geolocation.getCurrentPosition(function (position) {
-            var lat = position.coords.latitude;
-            var lon = position.coords.longitude;
+        var map = L.map('map'); //Empty map
+        var isAreaCreated = false;
+        var lat1, lon1, lat2, lon2 = 0;
+        var latMin, latMax, lngMin, lngMax = 0;
 
-            initMap(lat, lon);
-        }, function (error) {
-            alert("No se pudo obtener la ubicación del usuario.");
+        // Draw tools
+        var drawnItems = new L.FeatureGroup();
+        map.addLayer(drawnItems);
+
+        // Only draw rectangles
+        var drawControl = new L.Control.Draw({
+            edit: {
+                featureGroup: drawnItems
+            },
+            draw: {
+                rectangle: true,
+                polygon: false,
+                polyline: false,
+                circle: false,
+                marker: true,
+                circlemarker: false
+            }
         });
 
+        map.addControl(drawControl);
+
+        map.on('draw:created', function (event) {
+            if (isAreaCreated) {
+                var layer = event.layer;
+                if (layer instanceof L.Marker) { //Add cache marker
+                    var lat = layer.getLatLng().lat;
+                    var lng = layer.getLatLng().lng;
+                    if (lat >= latMin && lat <= latMax && lng >= lngMin && lng <= lngMax) //Inside the area
+                        drawnItems.addLayer(layer);
+                    //TODO: notify out of area
+                }
+            } else {
+                var layer = event.layer;
+                if (layer instanceof L.Rectangle) { // Add area
+
+                    drawnItems.addLayer(layer);
+
+                    var bounds = layer.getBounds();
+                    lat1 = bounds.getSouthWest().lat;
+                    lon1 = bounds.getSouthWest().lng;
+                    lat2 = bounds.getNorthEast().lat;
+                    lon2 = bounds.getNorthEast().lng;
+
+                    latMin = Math.min(lat1, lat2);
+                    latMax = Math.max(lat1, lat2);
+                    lngMin = Math.min(lon1, lon2);
+                    lngMax = Math.max(lon1, lon2);
+
+                    document.querySelector('.coordsX').innerHTML =
+                        'Latitud 1: ' + lat1.toFixed(6) + ', Longitud 1: ' + lon1.toFixed(6);
+                    document.querySelector('.coordsY').innerHTML =
+                        'Latitud 2: ' + lat2.toFixed(6) + ', Longitud 2: ' + lon2.toFixed(6);
+
+                    isAreaCreated = true;
+
+                } else {
+                    // TODO: notificar area no creada al intentar poner marker
+                }
+            }
+        });
+
+        map.on('draw:edited', function (event) {
+            var layers = event.layers;
+
+            layers.eachLayer(function (layer) {
+                if (layer instanceof L.Marker) {
+
+                }
+
+                if (layer instanceof L.Rectangle) {
+                    var bounds = layer.getBounds();
+                    lat1 = bounds.getSouthWest().lat;
+                    lon1 = bounds.getSouthWest().lng;
+                    lat2 = bounds.getNorthEast().lat;
+                    lon2 = bounds.getNorthEast().lng;
+
+                    latMin = Math.min(lat1, lat2);
+                    latMax = Math.max(lat1, lat2);
+                    lngMin = Math.min(lon1, lon2);
+                    lngMax = Math.max(lon1, lon2);
+
+                    document.querySelector('.coordsX').innerHTML =
+                        'Latitud 1: ' + lat1.toFixed(6) + ', Longitud 1: ' + lon1.toFixed(6);
+                    document.querySelector('.coordsY').innerHTML =
+                        'Latitud 2: ' + lat2.toFixed(6) + ', Longitud 2: ' + lon2.toFixed(6);
+
+
+                }
+            });
+        });
+
+        map.on('draw:deleted', function (event) {
+            var layers = event.layers;
+
+            layers.eachLayer(function (layer) {
+                if (layer instanceof L.Marker) {
+
+                }
+
+                if (layer instanceof L.Rectangle) {
+                    lat1 = 0;
+                    lon1 = 0;
+                    lat2 = 0;
+                    lon2 = 0;
+                    isAreaCreated = false;
+                    document.querySelector('.coordsX').innerHTML = "Latitud 1: - , Longitud 1: -";
+                    document.querySelector('.coordsY').innerHTML = "Latitud 2: - , Longitud 2: -";
+                }
+            });
+
+
+        });
+
+        // Localize the user and generate map
+        function locateUser() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(function (position) {
+                    var lat = position.coords.latitude;
+                    var lon = position.coords.longitude;
+
+                    initMap(lat, lon);
+
+                    L.marker([lat, lon]).addTo(map)
+                        .bindPopup("You are here")
+                        .openPopup();
+                }, function (error) {
+                    console.log("Error al obtener la ubicación: " + error.message);
+                });
+            } else {
+                alert("Geolocalización no es soportada por este navegador.");
+            }
+        }
+
         function initMap(latitude, longitude) {
-            var map = L.map('map').setView([latitude, longitude], 13);
+            map.setView([latitude, longitude], 13);
 
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             }).addTo(map);
-
-            {#L.marker([latitude, longitude]).addTo(map)#}
-            {#    .bindPopup("Tu ubicación")#}
-            {#    .openPopup();#}
-
-            // Crear el control de dibujo
-            var drawnItems = new L.FeatureGroup();
-            map.addLayer(drawnItems);
-
-            var drawControl = new L.Control.Draw({
-                edit: {
-                    featureGroup: drawnItems
-                },
-                draw: {
-                    rectangle: true, // Habilitar el dibujo de rectángulos
-                    polygon: false,  // Deshabilitar el dibujo de polígonos
-                    polyline: false, // Deshabilitar el dibujo de líneas
-                    circle: false,   // Deshabilitar el dibujo de círculos
-                    marker: false    // Deshabilitar el dibujo de marcadores
-                }
-            });
         }
 
-        map.addControl(drawControl);
+        window.onload = locateUser;
 
-        // Evento que se dispara cuando el usuario termina de dibujar un rectángulo
-        map.on('draw:created', function (event) {
-            var layer = event.layer;
-            drawnItems.addLayer(layer); // Agregar el rectángulo al mapa
-
-            // Puedes acceder a las coordenadas del rectángulo dibujado
-            var bounds = layer.getBounds();
-            console.log('Coordenadas del rectángulo:', bounds);
+        document.getElementById('addGameForm').addEventListener('submit', function (event) {
+            event.preventDefault();
+            sendToBackend();
         });
 
-        map.on('draw:created', function (event) {
-            var layer = event.layer;
-            drawnItems.addLayer(layer); // Agregar el rectángulo al mapa
+        function sendToBackend() {
+            var gameName = document.getElementById('gameName').value;
 
-            // Obtener las coordenadas del rectángulo
-            var bounds = layer.getBounds();
-            var lat1 = bounds.getSouthWest().lat;
-            var lon1 = bounds.getSouthWest().lng;
-            var lat2 = bounds.getNorthEast().lat;
-            var lon2 = bounds.getNorthEast().lng;
+            if(lat1 === 0 || lon1 === 0 || lat2 === 0 || lon2 === 0){
+                return;
+            }
 
-            // Mostrar las coordenadas en la consola
-            console.log('Coordenadas del rectángulo:');
-            console.log('Latitud 1: ' + lat1 + ', Longitud 1: ' + lon1);
-            console.log('Latitud 2: ' + lat2 + ', Longitud 2: ' + lon2);
+            var data = {
+                gameName: gameName,
+                area: {
+                    lat1: lat1,
+                    lon1: lon1,
+                    lat2: lat2,
+                    lon2: lon2
+                },
+                markers: []
+            };
 
-            // También puedes mostrar las coordenadas en un formulario o hacer cualquier acción con ellas
-        });
+            drawnItems.eachLayer(function (layer) {
+                if (layer instanceof L.Marker) {
+                    var lat = layer.getLatLng().lat;
+                    var lng = layer.getLatLng().lng;
+                    if (lat >= latMin && lat <= latMax && lng >= lngMin && lng <= lngMax) {
+                        data.markers.push({
+                            lat: lat,
+                            lng: lng
+                        });
+                    }
+                }
+            });
+
+            if(data.markers.length === 0){
+                return;
+            }
+
+            fetch('/add_game', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            })
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Datos enviados correctamente:', data);
+                    window.location.href = '/home';
+                })
+                .catch(error => {
+                    console.error('Error al enviar los datos:', error);
+                });
+        }
+
 
     </script>
 </div>
