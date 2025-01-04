@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chat app</title>
+    <title>Geocaching app</title>
     <style>
         /* General styles */
         body {
@@ -55,19 +55,23 @@
 
         button {
             width: 100%;
-            padding: 10px;
-            background-color: #4facfe;
-            color: white;
-            border: none;
+            background-color:white;
+            color:  #4facfe;
+            border: 1px solid #dcdcdc;
             border-radius: 5px;
             cursor: pointer;
             font-size: 16px;
             font-weight: bold;
-            transition: background 0.3s;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            transition: background-color 0.2s, border-color 0.2s;
+            display: flex;
+            align-items: center;
+            padding: 8px 12px;
         }
 
         button:hover {
-            background-color: #00c6ff;
+            background-color: #f7f7f7;
+            border-color: #c6c6c6;
         }
 
         .error {
@@ -128,77 +132,14 @@
 </div>
 
 <div class="container">
-    <h1>Chat app</h1>
-    <form id="loginForm" action="/login" method="POST">
-        <label for="username">Username or Email address :</label>
-        <input type="text" id="username" name="username" placeholder="Enter your username or email" required>
-
-        <label for="password">Password :</label>
-        <input type="password" id="password" name="password" placeholder="Enter your password" required>
-
-        <div id="errorMessage" class="error" style="display: none;"></div>
-
-        <button type="submit">Connect</button>
-    </form>
-    <div class="link">
-        <p>Don't have an account ? <a href="/register">Register here</a></p>
-        <p>Send a message without an account ? <a href="/sendMessage">Click here</a></p>
-    </div>
+    <h1>Geocaching app</h1>
+        <button type="submit" onclick="window.location.href='/login'">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_%22G%22_logo.svg/1280px-Google_%22G%22_logo.svg.png"
+                 alt="Google Logo"
+                 style="width: 18px; height: 18px; margin-right: 8px;">
+            Sign in with Google
+        </button>
 </div>
 
-<script>
-    document.getElementById("loginForm").addEventListener("submit", function (event) {
-        event.preventDefault();
-
-        const username = document.getElementById("username").value;
-        const password = document.getElementById("password").value;
-        const errorMessage = document.getElementById("errorMessage");
-        const loadingOverlay = document.getElementById("loadingOverlay");
-        loadingOverlay.style.display = "flex";
-
-        // Reset the error message
-        errorMessage.textContent = "";
-
-        // client-side validation
-        if (!username.includes("@") && username.length < 3) {
-            errorMessage.style.display = "block";
-            errorMessage.textContent = "Please enter a valid username or email.";
-            loadingOverlay.style.display = "none";
-            return;
-        }
-        if (!password.includes("@") && password.length < 3) {
-            errorMessage.style.display = "block";
-            errorMessage.textContent = "Please enter a valid password.";
-            loadingOverlay.style.display = "none";
-            return;
-        }
-
-        const formData = new FormData(this);
-        fetch("/login", {
-            method: "POST",
-            body: formData
-        })
-            .then(response => response.json())
-            .then(data => {
-                const feedback = document.getElementById("errorMessage");
-                feedback.style.display = "block";
-                if (!data.success) {
-                    feedback.textContent = data.message;
-                    loadingOverlay.style.display = "none";
-                } else {
-                    feedback.textContent = "Login successful!";
-                    feedback.style.color = "green";
-                    window.location.href = "/messages";
-                    setTimeout(() => {
-                        loadingOverlay.style.display = "none";
-                    }, 10000);
-                }
-            })
-            .catch(error => {
-                console.error("Error:", error);
-                loadingOverlay.style.display = "none";
-            });
-    });
-</script>
 </body>
 </html>

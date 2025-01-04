@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Home Page</title>
+    <style>
+        /* General Styles */
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #4facfe, #00f2fe) fixed;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            height: 100vh;
+        }
+
+        .header {
+            width: 95%;
+            background-color: #fff;
+            padding: 10px 50px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 1000;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .header .center {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-grow: 1;
+            flex-shrink: 1;
+            flex-basis: 0;
+            flex-direction: row;
+        }
+
+        .username {
+            font-weight: bold;
+        }
+
+        .header a {
+            color: #4facfe;
+            text-decoration: none;
+            font-weight: bold;
+            margin: 0 10px;
+        }
+
+        .header a:hover {
+            text-decoration: underline;
+        }
+
+        .container {
+            background: #fff;
+            padding: 20px 30px;
+            border-radius: 10px;
+            box-shadow: 0 6px 10px rgba(0, 0, 0, 0.15);
+            max-width: 800px;
+            width: 100%;
+            margin-top: 80px; /* Push the content below the header */
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        button {
+            width: 100%;
+            padding: 10px;
+            background-color: #4facfe;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: background 0.3s;
+            margin-bottom: 10px;
+        }
+
+        button:hover {
+            background-color: #00c6ff;
+        }
+
+        button .navigation {
+            width: 100%;
+            padding: 10px;
+            background-color: #4facfe;
+            color: white;
+            border: none;
+            border-radius: 0;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: background 0.3s;
+            margin-bottom: 0px;
+        }
+
+    </style>
+</head>
+<body>
+
+<!-- Header Section -->
+<div class="header">
+    <div class="left">
+        <span class="username">{{ session.userinfo.given_name }}</span>
+    </div>
+
+    <div class="center">
+        <button class="navigation" onclick="window.location.href='/my_games'">My games</button>
+        <button class="navigation" onclick="window.location.href='/games'">Games</button>
+        <button class="navigation" onclick="window.location.href='/new_game'">Create new game</button>
+    </div>
+    <div class="right">
+        <a href="/logout" class="logout-link">Logout</a>
+    </div>
+</div>
+
+<!-- Main Content -->
+<div class="container">
+    <h1>Welcome, {{ session.userinfo.name }}</h1>
+
+    <div class="buttons">
+
+
+    </div>
+</div>
+</body>
+</html>
