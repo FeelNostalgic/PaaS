@@ -85,22 +85,6 @@
             color: #a71d2a;
         }
 
-        .container {
-            background: #fff;
-            padding: 20px 30px;
-            border-radius: 10px;
-            box-shadow: 0 6px 10px rgba(0, 0, 0, 0.15);
-            max-width: 1500px;
-            width: 100%;
-            margin-top: 80px; /* Push the content below the header */
-        }
-
-        h1 {
-            text-align: center;
-            color: #333;
-            margin-bottom: 20px;
-        }
-
         button {
             width: 100%;
             padding: 10px;
@@ -119,25 +103,80 @@
             background-color: #00c6ff;
         }
 
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        .container {
+            background: #fff;
+            padding: 20px 30px;
+            border-radius: 10px;
+            box-shadow: 0 6px 10px rgba(0, 0, 0, 0.15);
+            max-width: 1500px;
+            width: 100%;
+            height: 80%;
+            margin-top: 80px;
+            display: flex;
+            flex: 1;
+        }
+
         #map {
-            flex: 1;
             width: 50%;
-            height: 500px;
+            height: 100%;
         }
 
-        .mapForm {
-            flex: 1;
+        .sidebar {
             width: 50%;
+            height: 96%;
+            display: flex;
+            flex-direction: column;
+            background-color: #f9f9f9;
+            padding: 20px;
+            box-shadow: -2px 0 5px rgba(0, 0, 0, 0.1);
         }
 
-        .info {
+        .sidebar .marker-list {
+            flex: 1;
+            overflow-y: auto;
             margin-top: 20px;
-            font-size: 16px;
         }
 
-        .coordsX, .coordsY {
-            font-weight: bold;
-            color: #0078D4;
+        .sidebar .marker-item {
+            padding: 10px;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .sidebar .marker-item input,
+        .sidebar .marker-item textarea {
+            width: calc(100% - 20px);
+            margin-bottom: 10px;
+        }
+
+        .sidebar .marker-item img {
+            max-width: 50%;
+            margin-bottom: 10px;
+        }
+
+        .sidebar .actions {
+            text-align: right;
+            margin-top: 20px;
+        }
+
+        .sidebar .actions button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: #4facfe;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            transition: background 0.3s;
+        }
+
+        .sidebar .actions button:hover {
+            background-color: #00c6ff;
         }
 
     </style>
@@ -164,21 +203,19 @@
 <div class="container">
     <div id="map"></div>
 
-    <div class="info">
-        <p>Las coordenadas del área seleccionada:</p>
-        <p><span class="coordsX">Latitud 1: - , Longitud 1: -</span></p>
-        <p><span class="coordsY">Latitud 2: - , Longitud 2: -</span></p>
+    <div class="sidebar">
+        <label for="gameName">Game Name:</label>
+        <input type="text" id="gameName" placeholder="Enter game name" required>
+
+        <div class="marker-list" id="markerList">
+            <!-- Markers will be dynamically added here -->
+        </div>
+
+        <div class="actions">
+            <button onclick="saveGame()">Save Game</button>
+        </div>
     </div>
 
-    <div id="mapForm" class="mapForm">
-        <form class="addGameForm" action="/add_game" method="POST" id="addGameForm">
-            <label for="gameName">Game name:</label>
-                <input type="text" id="gameName" name="gameName" placeholder="Game name" required>
-            {# TODO: new form to add a cache, maybe click in map to add it #}
-
-            <button type="submit">Add game</button>
-        </form>
-    </div>
 
     <!-- Incluir Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
@@ -212,6 +249,8 @@
 
         map.addControl(drawControl);
 
+        var markers = []; // Array to store markers with their data
+
         map.on('draw:created', function (event) {
             if (isAreaCreated) {
                 var layer = event.layer;
@@ -219,7 +258,25 @@
                     var lat = layer.getLatLng().lat;
                     var lng = layer.getLatLng().lng;
                     if (lat >= latMin && lat <= latMax && lng >= lngMin && lng <= lngMax) //Inside the area
+                    {
+                        var markerData = {
+                            id: L.stamp(layer), // Unique ID for the marker
+                            lat: layer.getLatLng().lat,
+                            lng: layer.getLatLng().lng,
+                            clueText: "",
+                            clueImage: null,
+                            layer: layer
+                        };
+                        markers.push(markerData);
                         drawnItems.addLayer(layer);
+
+                        layer.on('click', function () {
+                            updateMarkerPopup(markerData);
+                            layer.openPopup();
+                        });
+
+                        updateMarkerList();
+                    }
                     //TODO: notify out of area
                 }
             } else {
@@ -239,11 +296,6 @@
                     lngMin = Math.min(lon1, lon2);
                     lngMax = Math.max(lon1, lon2);
 
-                    document.querySelector('.coordsX').innerHTML =
-                        'Latitud 1: ' + lat1.toFixed(6) + ', Longitud 1: ' + lon1.toFixed(6);
-                    document.querySelector('.coordsY').innerHTML =
-                        'Latitud 2: ' + lat2.toFixed(6) + ', Longitud 2: ' + lon2.toFixed(6);
-
                     isAreaCreated = true;
 
                 } else {
@@ -252,12 +304,58 @@
             }
         });
 
+        function updateMarkerPopup(markerData) {
+            var content = `
+            <p><b>ID:</b> ${markerData.id}</p>
+            <p><b>Position:</b> (${markerData.lat.toFixed(6)}, ${markerData.lng.toFixed(6)})</p>
+            <p><b>Clue Text:</b> ${markerData.clueText || 'None'}</p>
+            ${markerData.clueImage ? `<img src="${markerData.clueImage}" alt="Clue Image" style="max-width: 200px;">` : ''}`;
+            markerData.layer.unbindPopup(); // Remove any existing popup
+            markerData.layer.bindPopup(content); // Bind the updated popup
+        }
+
+        function updateMarkerList() {
+            var markerList = document.getElementById('markerList');
+            markerList.innerHTML = ""; // Clear current list
+            markers.forEach((marker, index) => {
+                var markerItem = document.createElement('div');
+                markerItem.className = 'marker-item';
+                markerItem.innerHTML = `
+                <p>Marker ${index + 1}: (${marker.lat.toFixed(6)}, ${marker.lng.toFixed(6)})</p>
+                <label>Clue Text:</label>
+                <textarea rows="3" onchange="updateClueText(${index}, this.value)">${marker.clueText}</textarea>
+                <label>Clue Image:</label>
+                <input type="file" accept="image/*" onchange="updateClueImage(${index}, this)">
+                ${marker.clueImage ? `<img src="${marker.clueImage}" alt="Clue Image">` : ''}
+            `;
+                markerList.appendChild(markerItem);
+            });
+        }
+
+        function updateClueText(index, text) {
+            markers[index].clueText = text;
+        }
+
+        function updateClueImage(index, input) {
+            var reader = new FileReader();
+            reader.onload = function (e) {
+                markers[index].clueImage = e.target.result;
+                updateMarkerList();
+            };
+            reader.readAsDataURL(input.files[0]);
+        }
+
         map.on('draw:edited', function (event) {
             var layers = event.layers;
 
             layers.eachLayer(function (layer) {
                 if (layer instanceof L.Marker) {
-
+                    var markerId = L.stamp(layer);
+                    var marker = markers.find(m => m.id === markerId);
+                    if (marker) {
+                        marker.lat = layer.getLatLng().lat;
+                        marker.lng = layer.getLatLng().lng;
+                    }
                 }
 
                 if (layer instanceof L.Rectangle) {
@@ -271,15 +369,10 @@
                     latMax = Math.max(lat1, lat2);
                     lngMin = Math.min(lon1, lon2);
                     lngMax = Math.max(lon1, lon2);
-
-                    document.querySelector('.coordsX').innerHTML =
-                        'Latitud 1: ' + lat1.toFixed(6) + ', Longitud 1: ' + lon1.toFixed(6);
-                    document.querySelector('.coordsY').innerHTML =
-                        'Latitud 2: ' + lat2.toFixed(6) + ', Longitud 2: ' + lon2.toFixed(6);
-
-
                 }
             });
+
+            updateMarkerList();
         });
 
         map.on('draw:deleted', function (event) {
@@ -287,7 +380,8 @@
 
             layers.eachLayer(function (layer) {
                 if (layer instanceof L.Marker) {
-
+                    var markerId = L.stamp(layer);
+                    markers = markers.filter(m => m.id !== markerId);
                 }
 
                 if (layer instanceof L.Rectangle) {
@@ -296,12 +390,9 @@
                     lat2 = 0;
                     lon2 = 0;
                     isAreaCreated = false;
-                    document.querySelector('.coordsX').innerHTML = "Latitud 1: - , Longitud 1: -";
-                    document.querySelector('.coordsY').innerHTML = "Latitud 2: - , Longitud 2: -";
                 }
             });
-
-
+            updateMarkerList();
         });
 
         // Localize the user and generate map
@@ -334,15 +425,21 @@
 
         window.onload = locateUser;
 
-        document.getElementById('addGameForm').addEventListener('submit', function (event) {
-            event.preventDefault();
-            sendToBackend();
-        });
-
-        function sendToBackend() {
+        function saveGame() {
             var gameName = document.getElementById('gameName').value;
 
-            if(lat1 === 0 || lon1 === 0 || lat2 === 0 || lon2 === 0){
+            if (!gameName) {
+                alert("Please enter a game name.");
+                return;
+            }
+
+            if (lat1 === 0 || lon1 === 0 || lat2 === 0 || lon2 === 0) {
+                alert("Please set an area for the game.");
+                return;
+            }
+
+            if (markers.length === 0) {
+                alert("Please add at least one marker.");
                 return;
             }
 
@@ -357,22 +454,15 @@
                 markers: []
             };
 
-            drawnItems.eachLayer(function (layer) {
-                if (layer instanceof L.Marker) {
-                    var lat = layer.getLatLng().lat;
-                    var lng = layer.getLatLng().lng;
-                    if (lat >= latMin && lat <= latMax && lng >= lngMin && lng <= lngMax) {
-                        data.markers.push({
-                            lat: lat,
-                            lng: lng
-                        });
-                    }
-                }
+            markers.forEach(marker => {
+                data.markers.push({
+                    id: marker.id,
+                    lat: marker.lat,
+                    lng: marker.lng,
+                    clueText: marker.clueText,
+                    clueImage: marker.clueImage
+                });
             });
-
-            if(data.markers.length === 0){
-                return;
-            }
 
             fetch('/add_game', {
                 method: 'POST',
@@ -390,8 +480,6 @@
                     console.error('Error al enviar los datos:', error);
                 });
         }
-
-
     </script>
 </div>
 </body>

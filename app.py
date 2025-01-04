@@ -74,6 +74,7 @@ def addGame():
     if "user" in session:
         if request.method == "POST":
             data = request.get_json()
+            print(data)
 
             gameName = data.get('gameName')
             area = data.get('area')
