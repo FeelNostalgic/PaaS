@@ -4,7 +4,9 @@
     margin: 15px 0;
     border-radius: 10px;
     display: flex;
-    align-items: center;
+    align-items: center;  /* Esto asegura que todos los elementos estén alineados verticalmente */
+    justify-content: flex-start;  /* Alineamos los elementos hacia la izquierda */
+    background-color: #f9f9f9;
     cursor: pointer;
     transition: background-color 0.3s ease;
 }
@@ -65,4 +67,5 @@
     height: 150px;
     border-radius: 10px;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    flex-shrink: 0;
 }
