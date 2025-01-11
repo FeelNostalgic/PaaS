@@ -4,6 +4,7 @@ from authlib.integrations.flask_client import OAuth
 from flask import Flask, abort, redirect, render_template, session, url_for, request, flash, jsonify
 from dotenv import load_dotenv
 import os
+from backend.database import DatabaseAPI
 
 load_dotenv()
 
@@ -31,7 +32,7 @@ def index():
 @app.route('/home')
 def home():
     if "user" in session:
-        return render_template("mainpage.html", session=session.get("user"), pretty=json.dumps(session.get("user"), indent=4))
+        return render_template("mainpage.html", session=session.get("user"))
     else:
         abort(404)
 
@@ -74,9 +75,8 @@ def addGame():
     if "user" in session:
         if request.method == "POST":
             data = request.get_json()
-            print(data)
 
-            gameName = data.get('gameName')
+            game_name = data.get('gameName')
             area = data.get('area')
             lat1 = area.get('lat1')
             lon1 = area.get('lon1')
@@ -84,7 +84,11 @@ def addGame():
             lon2 = area.get('lon2')
             markers = data.get('markers')
 
-            # db.save_area_and_markers(session.userinfo.sub, gameName, lat1, lon1, lat2, lon2, markers)
+            user = session.get('user')['userinfo']
+
+            # TODO:  check if gamename exist
+
+            DatabaseAPI.insert_new_game(user['sub'], user['given_name'], game_name, lat1, lon1, lat2, lon2, markers)
 
             # Responder con un mensaje de éxito
             return jsonify({'message': 'Datos guardados correctamente'})

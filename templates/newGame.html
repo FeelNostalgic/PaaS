@@ -179,9 +179,59 @@
             background-color: #00c6ff;
         }
 
+        .incomplete-marker {
+            border: 2px solid red;
+            padding: 5px;
+            margin-bottom: 5px;
+            background-color: #ffe6e6;
+        }
+
+        .warning {
+            color: red;
+            font-weight: bold;
+            font-size: 12px;
+            padding: 0;
+        }
+
+        .feedback {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            background-color: #e0ffe0;
+            color: #3e8e41;
+            padding: 0;
+            overflow: hidden;
+            height: 0;
+            border-radius: 4px 4px 0 0;
+            text-align: center;
+            font-size: 16px;
+            z-index: 2000;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            transition: height 0.5s ease, padding 0.5s ease;
+
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .feedback.show {
+            height: 60px;
+            padding: 15px;
+        }
+
+        .feedback.error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+
     </style>
 </head>
 <body>
+
+<div id="feedbackDiv">
+    <div id="feedback" class="feedback"></div>
+</div>
 
 <!-- Header Section -->
 <div class="header">
@@ -190,9 +240,10 @@
     </div>
 
     <div class="center">
-        <button class="navigation" onclick="window.location.href='/my_games'">My games</button>
-        <button class="navigation" onclick="window.location.href='/home'">Games</button>
-        <button class="navigation" onclick="window.location.href='/new_game'">Create new game</button>
+        <button class="navigation" onclick="window.location.href='/my_games'">Hunt Creations</button>
+        <button class="navigation" onclick="window.location.href='/user_games'">Hunt</button>
+        <button class="navigation" onclick="window.location.href='/home'">Global hunts</button>
+        <button class="navigation" onclick="window.location.href='/new_game'">Plan a hunt</button>
     </div>
     <div class="right">
         <a href="/logout" class="logout-link">Logout</a>
@@ -276,8 +327,9 @@
                         });
 
                         updateMarkerList();
+                    } else {
+                        showFeedback("Marker outside the area", 1500, true);
                     }
-                    //TODO: notify out of area
                 }
             } else {
                 var layer = event.layer;
@@ -299,7 +351,7 @@
                     isAreaCreated = true;
 
                 } else {
-                    // TODO: notificar area no creada al intentar poner marker
+                    showFeedback("Please create an area first", 1500, true);
                 }
             }
         });
@@ -314,20 +366,48 @@
             markerData.layer.bindPopup(content); // Bind the updated popup
         }
 
-        function updateMarkerList() {
+        function updateMarkerList(warning = false) {
             var markerList = document.getElementById('markerList');
             markerList.innerHTML = ""; // Clear current list
+
             markers.forEach((marker, index) => {
                 var markerItem = document.createElement('div');
                 markerItem.className = 'marker-item';
+
+                var missingClueText = !marker.clueText || marker.clueText.trim() === '';
+                var missingClueImage = !marker.clueImage;
+
+                var warningClueText = '';
+                var warningClueImage = '';
+                if (warning) {
+                    if (missingClueText && missingClueImage) {
+                        markerItem.classList.add('incomplete-marker');
+                        warningClueText = `
+                <p class="warning">
+                     ${missingClueText ? "Clue Text is missing. " : ""}
+                </p>
+                    `;
+                        markerItem.classList.add('incomplete-marker');
+                        warningClueImage = `
+                <p class="warning">
+                    ${missingClueImage ? "Clue Image is missing." : ""}
+                </p>
+                    `;
+                    }
+                }
+
+
                 markerItem.innerHTML = `
-                <p>Marker ${index + 1}: (${marker.lat.toFixed(6)}, ${marker.lng.toFixed(6)})</p>
-                <label>Clue Text:</label>
-                <textarea rows="3" onchange="updateClueText(${index}, this.value)">${marker.clueText}</textarea>
-                <label>Clue Image:</label>
-                <input type="file" accept="image/*" onchange="updateClueImage(${index}, this)">
-                ${marker.clueImage ? `<img src="${marker.clueImage}" alt="Clue Image">` : ''}
-            `;
+            <p>Marker ${index + 1}: (${marker.lat.toFixed(6)}, ${marker.lng.toFixed(6)})</p>
+            <label>Clue Text:</label>
+            <textarea rows="3" onchange="updateClueText(${index}, this.value)">${marker.clueText || ''}</textarea>
+            ${warningClueText}
+            <label>Clue Image:</label>
+            <input type="file" accept="image/*" onchange="updateClueImage(${index}, this)">
+            ${marker.clueImage ? `<img src="${marker.clueImage}" alt="Clue Image">` : ''}
+            ${warningClueImage}
+                `;
+
                 markerList.appendChild(markerItem);
             });
         }
@@ -348,13 +428,21 @@
         map.on('draw:edited', function (event) {
             var layers = event.layers;
 
+            markersToRemove = [];
             layers.eachLayer(function (layer) {
                 if (layer instanceof L.Marker) {
                     var markerId = L.stamp(layer);
                     var marker = markers.find(m => m.id === markerId);
-                    if (marker) {
-                        marker.lat = layer.getLatLng().lat;
-                        marker.lng = layer.getLatLng().lng;
+                    var lat = layer.getLatLng().lat;
+                    var lng = layer.getLatLng().lng;
+                    if (lat >= latMin && lat <= latMax && lng >= lngMin && lng <= lngMax) //Inside the area
+                    {
+                        if (marker) {
+                            marker.lat = lat;
+                            marker.lng = lng;
+                        }
+                    } else {
+                        markersToRemove.push(marker);
                     }
                 }
 
@@ -369,7 +457,24 @@
                     latMax = Math.max(lat1, lat2);
                     lngMin = Math.min(lon1, lon2);
                     lngMax = Math.max(lon1, lon2);
+
+                    for (var i = 0; i < markers.length; i++) {
+                        var marker = markers[i];
+                        var lat = marker.lat;
+                        var lng = marker.lng;
+                        if (!(lat >= latMin && lat <= latMax && lng >= lngMin && lng <= lngMax)) //Inside the area
+                        {
+                            markersToRemove.push(marker);
+                        }
+                    }
                 }
+            });
+
+
+            markersToRemove.forEach(marker => {
+                showFeedback(`Markers outside the area will be removed`, 1500, true);
+                marker.layer.setOpacity(0);
+                markers = markers.filter(m => m.id !== marker.id);
             });
 
             updateMarkerList();
@@ -390,6 +495,8 @@
                     lat2 = 0;
                     lon2 = 0;
                     isAreaCreated = false;
+                    drawnItems.clearLayers();
+                    markers = [];
                 }
             });
             updateMarkerList();
@@ -411,7 +518,7 @@
                     console.log("Error al obtener la ubicación: " + error.message);
                 });
             } else {
-                alert("Geolocalización no es soportada por este navegador.");
+                showFeedback("Geolocalización no es soportada por este navegador.", 1500, true);
             }
         }
 
@@ -429,18 +536,27 @@
             var gameName = document.getElementById('gameName').value;
 
             if (!gameName) {
-                alert("Please enter a game name.");
+                showFeedback("Please enter a game name.", 1500, true);
                 return;
             }
 
             if (lat1 === 0 || lon1 === 0 || lat2 === 0 || lon2 === 0) {
-                alert("Please set an area for the game.");
+                showFeedback("Please create an area for the game.", 1500, true);
                 return;
             }
 
             if (markers.length === 0) {
-                alert("Please add at least one marker.");
+                showFeedback("Please add at least one marker.", 1500, true);
                 return;
+            }
+
+            updateMarkerList(true);
+
+            for (let marker of markers) {
+                if (!marker.clueText && !marker.clueImage) {
+                    showFeedback("Each marker must have at least a clue text or image.", 1500, true);
+                    return;
+                }
             }
 
             var data = {
@@ -473,12 +589,33 @@
             })
                 .then(response => response.json())
                 .then(data => {
-                    console.log('Datos enviados correctamente:', data);
-                    window.location.href = '/home';
+                    showFeedback("Game saved successfully.");
+                    setTimeout(() => {
+                        window.location.href = '/home';
+                    }, 1500);
+
                 })
                 .catch(error => {
-                    console.error('Error al enviar los datos:', error);
+                    showFeedback("Error when sending data", 1500, true);
                 });
+        }
+
+        function showFeedback(message, duration = 1500, isError = false) {
+            const feedback = document.getElementById("feedback");
+
+            feedback.textContent = message;
+
+            if (isError) {
+                feedback.classList.add("error");
+            } else {
+                feedback.classList.remove("error");
+            }
+
+            feedback.classList.add("show");
+
+            setTimeout(() => {
+                feedback.classList.remove("show");
+            }, duration);
         }
     </script>
 </div>

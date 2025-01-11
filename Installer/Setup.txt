@@ -1,1 +1,1 @@
-pip install Flask authlib requests python-dotenv
+pip install Flask authlib requests python-dotenv  "pymongo[srv]"

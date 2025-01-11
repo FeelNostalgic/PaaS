@@ -127,9 +127,10 @@
     </div>
 
     <div class="center">
-        <button class="navigation" onclick="window.location.href='/my_games'">My games</button>
-        <button class="navigation" onclick="window.location.href='/home'">Games</button>
-        <button class="navigation" onclick="window.location.href='/new_game'">Create new game</button>
+        <button class="navigation" onclick="window.location.href='/my_games'">Hunt Creations</button>
+        <button class="navigation" onclick="window.location.href='/user_games'">Hunt</button>
+        <button class="navigation" onclick="window.location.href='/home'">Global hunts</button>
+        <button class="navigation" onclick="window.location.href='/new_game'">Plan a hunt</button>
     </div>
     <div class="right">
         <a href="/logout" class="logout-link">Logout</a>
@@ -139,10 +140,6 @@
 <!-- Main Content -->
 <div class="container">
     <h1>Welcome, {{ session.userinfo.name }}</h1>
-
-    <div>
-        <pre>{{ pretty }}</pre>
-    </div>
 </div>
 </body>
 </html>
