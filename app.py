@@ -5,6 +5,7 @@ from flask import Flask, abort, redirect, render_template, session, url_for, req
 from dotenv import load_dotenv
 import os
 from backend.database import DatabaseAPI
+import requests
 
 load_dotenv()
 
@@ -109,7 +110,7 @@ def game_detail(game_id):
 def participate(game_id):
     if "user" in session:
         game = DatabaseAPI.find_game_by_id(game_id)
-        DatabaseAPI.insert_new_user_game(game, session.get("user")["userinfo"]["sub"])
+        DatabaseAPI.insert_new_user_game(game, session.get("user")["userinfo"]["sub"], session.get("user")["userinfo"]["given_name"])
         return redirect(f"/game/{game_id}")
     else:
         abort(404)
@@ -119,7 +120,6 @@ def participate(game_id):
 def unsubscribe(game_id):
     if "user" in session:
         DatabaseAPI.remove_user_game_by_game_id(game_id, session.get("user")["userinfo"]["sub"])
-        game = DatabaseAPI.find_game_by_id(game_id)
         return redirect(f"/game/{game_id}")
     else:
         abort(404)
@@ -148,12 +148,25 @@ def deleteGame(game_id):
     else:
         abort(404)
 
+@app.route('/reset_game/<string:game_id>')
+def resetGame(game_id):
+    pass
 
-@app.route('/edit_game/<int:game_id>')
+@app.route('/view_game/<string:game_id>')
 def editGame(game_id):
     if "user" in session:
         game = DatabaseAPI.find_game_by_id(game_id)
         if session.get("user")["userinfo"]["sub"] == game["creator"]["sub"]:
+            for marker in game["markers"]:
+                marker['foundBy'] = []
+                users = DatabaseAPI.get_user_that_found_cache(game_id, marker['id'])
+                for user in users:
+                    marker['foundBy'].append({
+                        'user_id': user['user'],
+                        'user_name': user['user_name'],
+                        'image' : user['markers']['image']
+                    })
+
             game_data = {
                 "id": str(game["_id"]),
                 "name": game["name"],
@@ -164,7 +177,7 @@ def editGame(game_id):
                 "area": game["area"],
                 "participating": False
             }
-            return render_template("EditGame.html", session=session.get("user"), game=game_data)
+            return render_template("SuperviseGame.html", session=session.get("user"), game=game_data)
         else:
             abort(404)
     else:
@@ -208,7 +221,7 @@ def addGame():
 def myHunts():
     if "user" in session:
         user_games = DatabaseAPI.find_all_user_games(session.get("user")["userinfo"]["sub"])
-        games = DatabaseAPI.find_games_by_id(user_games)
+        games = DatabaseAPI.find_games_user_is_subscribed(user_games)
         games_list = []
         for game in games:
             game_data = {

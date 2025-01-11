@@ -47,7 +47,7 @@ class DatabaseAPI:
         return collection.insert_one(data)
 
     @staticmethod
-    def insert_new_user_game(game, user_sub):
+    def insert_new_user_game(game, user_sub, user_name):
         collection = db[config['user_games']]
         markers = game['markers']
         for marker in markers:
@@ -55,6 +55,7 @@ class DatabaseAPI:
         data = {
             'game': game['_id'],
             'user': user_sub,
+            'user_name': user_name,
             'date': datetime.now(),
             'markers': markers
         }
@@ -66,7 +67,7 @@ class DatabaseAPI:
         return collection.find({"creator.sub": {"$ne": user_id}}).sort('date', -1)
 
     @staticmethod
-    def find_games_by_id(game_ids):
+    def find_games_user_is_subscribed(game_ids):
         collection = db[config['games']]
         return collection.find({"_id": {"$in": game_ids}}).sort('date', -1)
 
@@ -89,6 +90,7 @@ class DatabaseAPI:
         data = {
             'game': user_game['game'],
             'user': user_game['user'],
+            'user_name': user_game['user_name'],
             'date': datetime.now(),
             'markers': markers
         }
@@ -107,7 +109,32 @@ class DatabaseAPI:
     @staticmethod
     def remove_user_game_by_game_id(game_id, user_id):
         collection = db[config['user_games']]
-        return collection.delete_many({'user': user_id, 'game':ObjectId(game_id)})
+        return collection.delete_many({'user': user_id, 'game': ObjectId(game_id)})
+
+    @staticmethod
+    def get_user_that_found_cache(game_id, marker_id):
+        collection = db[config['user_games']]
+        pipeline = [
+            {"$match": {"game": ObjectId(game_id)}},
+            {"$unwind": "$markers"},
+            {
+                "$match": {
+                    "markers.found": True,
+                    "markers.id": marker_id
+                }
+            },
+            {"$sort": {"date": -1}},
+            {
+                "$group": {
+                    "_id": "$user",
+                    "lastDocument": {"$first": "$$ROOT"}
+                }
+            },
+            {"$replaceRoot": {"newRoot": "$lastDocument"}},
+            {"$project": {"user":1, "user_name": 1, "markers.image":1, "_id": 0}}
+        ]
+
+        return list(collection.aggregate(pipeline))
 
     @staticmethod
     def __find_the_most_recent_user_game(query):

@@ -2,7 +2,7 @@
 {% block head %}
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Home Page</title>
+    <title>Creations</title>
 {% endblock %}
 {% block body %}
     <!-- Main Content -->
@@ -10,7 +10,7 @@
         <h2 class="title">Your hunts</h2>
         <div id="games-list">
             {% for game in games %}
-                <div class="game-item" onclick="window.location.href='/edit_game/{{ game.id }}'">
+                <div class="game-item" onclick="window.location.href='/view_game/{{ game.id }}'">
                     <!-- Map Preview -->
                     <div id="map-{{ game.id }}" class="map-preview">
                         <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>

@@ -223,8 +223,8 @@
             <p><b>Position:</b> (${markerData.lat.toFixed(6)}, ${markerData.lng.toFixed(6)})</p>
             <p><b>Clue Text:</b> ${markerData.clueText || 'None'}</p>
             ${markerData.clueImage ? `<img src="${markerData.clueImage}" alt="Clue Image" style="max-width: 200px;">` : ''}`;
-                markerData.layer.unbindPopup(); // Remove any existing popup
-                markerData.layer.bindPopup(content); // Bind the updated popup
+                markerData.layer.unbindPopup();
+                markerData.layer.bindPopup(content);
             }
 
             function updateMarkerList(warning = false) {
@@ -256,8 +256,6 @@
                     `;
                         }
                     }
-
-
                     markerItem.innerHTML = `
                     <p>Marker ${index + 1}: (${marker.lat.toFixed(6)}, ${marker.lng.toFixed(6)})</p>
                     <label>Clue Text:</label>
