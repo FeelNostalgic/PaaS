@@ -1,16 +1,8 @@
-﻿<!DOCTYPE html>
-<html lang="en">
-<head>
+﻿{% extends "base.html" %}
+{% block head %}
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>New game</title>
-    <link type="text/css" rel="stylesheet" href="{{ url_for('static', filename='css/header.css') }}">
-    <link type="text/css" rel="stylesheet" href="{{ url_for('static', filename='css/body.css') }}">
-    <link type="text/css" rel="stylesheet" href="{{ url_for('static', filename='css/feedback.css') }}">
-
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"/>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css"/>
-
+    <title>Game {{ game.name }}</title>
     <style>
         .container {
             background: #fff;
@@ -40,6 +32,10 @@
             box-shadow: -2px 0 5px rgba(0, 0, 0, 0.1);
         }
 
+        .sidebar h2 {
+            margin-bottom: 20px;
+        }
+
         .sidebar .marker-list {
             flex: 1;
             overflow-y: auto;
@@ -49,15 +45,10 @@
         .sidebar .marker-item {
             padding: 10px;
             border-bottom: 1px solid #ddd;
+            margin-bottom: 15px;
         }
 
-        .sidebar .marker-item input,
-        .sidebar .marker-item textarea {
-            width: calc(100% - 20px);
-            margin-bottom: 10px;
-        }
-
-        .sidebar .marker-item img {
+        .marker-item img {
             max-width: 50%;
             margin-bottom: 10px;
         }
@@ -82,7 +73,7 @@
             background-color: #00c6ff;
         }
 
-        button {
+        button.submitButton, .found-btn {
             width: 100%;
             padding: 10px;
             background-color: #4facfe;
@@ -94,6 +85,29 @@
             font-weight: bold;
             transition: background 0.3s;
             margin-bottom: 10px;
+        }
+
+        .foldout-btn {
+            background-color: #dddddd;
+            color: #444;
+            cursor: pointer;
+            padding: 18px;
+            width: 100%;
+            border: none;
+            text-align: left;
+            outline: none;
+            font-size: 15px;
+        }
+
+        .active, .foldout-btn:hover {
+            background-color: #ccc;
+        }
+
+        .marker-details {
+            padding: 0 18px;
+            display: none;
+            overflow: hidden;
+            background-color: #f1f1f1;
         }
 
         .incomplete-marker {
@@ -111,96 +125,228 @@
         }
 
     </style>
-</head>
-<body>
+{% endblock %}
 
-<div id="feedbackDiv">
-    <div id="feedback" class="feedback"></div>
-</div>
+{% block body %}
+        <!-- Main Content -->
+    <div class="container">
+        <div id="map"></div>
 
-<!-- Header Section -->
-<div class="header">
-    <div class="left">
-        <span class="username">{{ session.userinfo.given_name }}</span>
-    </div>
-
-    <div class="center">
-        <button class="navigation" onclick="window.location.href='/my_games'">Hunt Creations</button>
-        <button class="navigation" onclick="window.location.href='/user_games'">Hunt</button>
-        <button class="navigation" onclick="window.location.href='/home'">Global hunts</button>
-        <button class="navigation" onclick="window.location.href='/new_game'">Plan a hunt</button>
-    </div>
-    <div class="right">
-        <a href="/logout" class="logout-link">Logout</a>
-    </div>
-</div>
-
-<!-- Main Content -->
-<div class="container">
-    <div id="map"></div>
-
-    <div class="sidebar">
-        <p id="gameName">{{ game.name }}</p>
-
-        <h3>Caches</h3>
-        <div class="marker-list" id="markerList">
-            {% for cache in game.markers %}
-                <div class="marker-item">
-                    <p>{{ cache.clueText }}</p>
+        <div class="sidebar">
+            <h2>{{ game.name }}</h2>
+            <div class="game-details">
+                <div class="game-details-row">
+                    <span><strong>Creador:</strong> {{ game.creator }}</span>
+                    <span style="font-size: smaller;">{{ game.date }}</span>
                 </div>
-            {% endfor %}
-        </div>
+                <div class="game-details-row">
+                    <div class="game-status {{ game.status | lower | replace(" ", "-") }}">
+                        {{ game.status }}
+                    </div>
+                </div>
 
-        <div class="actions">
-            <button onclick="window.location.href='/participate/{{ game.id }}'">Participate</button>
+                <h3>Caches</h3>
+                <div class="marker-list">
+                    {% for marker in game.markers %}
+                        {% if marker.found %}
+                            <div class="marker-item">
+                                <button id="foldout-btn-{{ marker.id }}" class="foldout-btn" onclick="toggleMarkerDetails({{ marker.id }})" style="background:green;">Cache #{{ loop.index }}</button>
+                                <div id="marker-details-{{ marker.id }}" class="marker-details" style="display: none;">
+                                    {% if marker.clueText %}
+                                        <p><strong>Clue Text:</strong> {{ marker.clueText }}</p>
+                                    {% endif %}
+                                    {% if marker.clueImage %}
+                                        <p><strong>Clue Image:</strong></p>
+                                        <img src="{{ marker.clueImage }}" alt="Clue Image">
+                                    {% endif %}
+                                    <div id="uploaded-photo-{{ marker.id }}" class="uploaded-photo">
+                                        <img src="{{ marker.image }}" alt="Found image">
+                                    </div>
+                                </div>
+                            </div>
+                        {% else %}
+                            <div class="marker-item">
+                                <button id="foldout-btn-{{ marker.id }}" class="foldout-btn" onclick="toggleMarkerDetails({{ marker.id }})">Cache #{{ loop.index }}</button>
+                                <div id="marker-details-{{ marker.id }}" class="marker-details" style="display: none;">
+                                    {% if marker.clueText %}
+                                        <p><strong>Clue Text:</strong> {{ marker.clueText }}</p>
+                                    {% endif %}
+                                    {% if marker.clueImage %}
+                                        <p><strong>Clue Image:</strong></p>
+                                        <img src="{{ marker.clueImage }}" alt="Clue Image">
+                                    {% endif %}
+                                    {% if game.participating %}
+                                        <!-- Botón para subir la imagen -->
+                                        <p><strong>Upload a photo:</strong></p>
+                                        <input type="file" id="upload-photo-{{ marker.id }}" accept="image/*" onchange="handleImageUpload(event, {{ marker.id }})">
+                                        <div id="uploaded-photo-{{ marker.id }}" class="uploaded-photo"></div>
+
+                                        <!-- Botón para borrar la foto -->
+                                        <button id="delete-photo-btn-{{ marker.id }}" class="delete-photo-btn" onclick="deletePhoto({{ marker.id }})" style="display: none;">Delete Photo</button>
+
+                                        <!-- Botón de "Found" -->
+                                        <button id="found-btn-{{ marker.id }}" class="found-btn" onclick="markAsFound({{ marker.id }})">Found</button>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+
+                {% if not game.participating %}
+                    <div class="actions">
+                        <button class="submitButton" onclick="window.location.href='/participate/{{ game.id }}'">Participate</button>
+                    </div>
+                {% endif %}
+            </div>
+
+            <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+            <script>
+                var map = L.map('map'); //Empty map
+
+                var markers = [
+                    {% for marker in game.markers %}
+                        {
+                            id: {{ marker.id }},
+                            lat: {{ marker.lat }},
+                            lng: {{ marker.lng }},
+                            found: "{{ marker.found }}",
+                            foundImage: ""
+                        },
+                    {% endfor %}
+                ];
+
+                function initMap() {
+                    var latLngBounds = [
+                        [{{ game.area.lat1 }}, {{ game.area.lon1 }}],
+                        [{{ game.area.lat2 }}, {{ game.area.lon2 }}]
+                    ];
+
+                    var lat = ({{ game.area.lat1 }} + {{ game.area.lat2 }}) / 2;
+                    var lon = ({{ game.area.lon1 }} + {{ game.area.lon2 }}) / 2;
+                    map.setView([lat, lon], 13);
+                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                    }).addTo(map);
+                    L.rectangle(latLngBounds).addTo(map);
+                    map.fitBounds(latLngBounds);
+
+                    markers.forEach(marker => {
+                        if (marker.found === "True") {
+                            L.marker([marker.lat, marker.lng]).addTo(map)
+                                .bindPopup(`Cache #${(markers.indexOf(marker) + 1)} found!`)
+                                .openPopup();
+                        }
+                    });
+                }
+
+                window.onload = initMap;
+
+                // Toggle details visibility for each marker
+                function toggleMarkerDetails(markerId) {
+                    var details = document.getElementById("marker-details-" + markerId);
+                    details.style.display = details.style.display === "none" ? "block" : "none";
+                }
+
+                async function markAsFound(markerId) {
+                    var marker = markers.find(function (m) {
+                        return m.id === markerId;
+                    });
+                    if (!marker) {
+                        console.log("Marker not found.");
+                        return;
+                    }
+
+                    const uploadedPhotoContainer = document.getElementById(`uploaded-photo-${markerId}`);
+                    if (uploadedPhotoContainer.innerHTML === "") {
+                        showFeedback("Please upload a photo before marking as found.", 1500, true);
+                        return;
+                    }
+
+                    var data = {
+                        gameId: "{{ game.id }}",
+                        markerId: markerId,
+                        photo: marker.foundImage
+                    }
+
+                    fetch('/uploadFoundImage', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(data)
+                    }).then(response => response.json())
+                        .then(data => {
+                            var foundButton = document.getElementById(`found-btn-${markerId}`);
+                            foundButton.style.display = "none";
+                            var foldout = document.getElementById(`foldout-btn-${marker.id}`);
+                            foldout.style.background = "green";
+
+                            L.marker([marker.lat, marker.lng]).addTo(map)
+                                .bindPopup(`Cache #${(markers.indexOf(marker) + 1)} found!`)
+                                .openPopup();
+
+                            const deleteButton = document.getElementById(`delete-photo-btn-${markerId}`);
+                            deleteButton.style.display = "none";
+                        })
+                        .catch(error => {
+                            showFeedback("An error occurred while uploading the photo. Please try again.", 1500, true);
+                        });
+                }
+
+                function handleImageUpload(event, markerId) {
+                    const fileInput = event.target;
+                    const uploadedPhotoContainer = document.getElementById(`uploaded-photo-${markerId}`);
+                    const deleteButton = document.getElementById(`delete-photo-btn-${markerId}`);
+
+                    var marker = markers.find(function (m) {
+                        return m.id === markerId;
+                    });
+
+                    if (fileInput.files && fileInput.files[0]) {
+                        const reader = new FileReader();
+                        reader.onload = function (e) {
+                            marker.foundImage = e.target.result;
+                            uploadedPhotoContainer.innerHTML = `<img src="${e.target.result}" alt="Uploaded Photo">`;
+                            deleteButton.style.display = "inline-block";
+                        };
+                        reader.readAsDataURL(fileInput.files[0]);
+                    }
+                }
+
+                function deletePhoto(markerId) {
+                    const uploadedPhotoContainer = document.getElementById(`uploaded-photo-${markerId}`);
+                    const fileInput = document.getElementById(`upload-photo-${markerId}`);
+                    const deleteButton = document.getElementById(`delete-photo-btn-${markerId}`);
+
+                    var marker = markers.find(function (m) {
+                        return m.id === markerId;
+                    });
+
+                    uploadedPhotoContainer.innerHTML = "";
+                    fileInput.value = "";
+                    marker.foundImage = "";
+                    deleteButton.style.display = "none";
+                }
+
+                function showFeedback(message, duration = 1500, isError = false) {
+                    const feedback = document.getElementById("feedback");
+
+                    feedback.textContent = message;
+
+                    if (isError) {
+                        feedback.classList.add("error");
+                    } else {
+                        feedback.classList.remove("error");
+                    }
+
+                    feedback.classList.add("show");
+
+                    setTimeout(() => {
+                        feedback.classList.remove("show");
+                    }, duration);
+                }
+            </script>
         </div>
     </div>
-
-    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
-    <script>
-        var markers = []; // Array to store markers with their data
-
-        function initMap() {
-            var latLngBounds = [
-                [{{ game.area.lat1 }}, {{ game.area.lon1 }}],
-                [{{ game.area.lat2 }}, {{ game.area.lon2 }}]
-            ];
-
-            var lat = ({{ game.area.lat1 }} + {{ game.area.lat2 }}) / 2;
-            var lon = ({{ game.area.lon1 }} + {{ game.area.lon2 }}) / 2;
-            var map = L.map('map',
-                {
-                    zoomControl: false,
-                    attributionControl: false
-                })
-                .setView([lat, lon], 13);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            }).addTo(map);
-            L.rectangle(latLngBounds).addTo(map);
-            map.fitBounds(latLngBounds);
-        }
-
-        window.onload = initMap;
-
-        function showFeedback(message, duration = 1500, isError = false) {
-            const feedback = document.getElementById("feedback");
-
-            feedback.textContent = message;
-
-            if (isError) {
-                feedback.classList.add("error");
-            } else {
-                feedback.classList.remove("error");
-            }
-
-            feedback.classList.add("show");
-
-            setTimeout(() => {
-                feedback.classList.remove("show");
-            }, duration);
-        }
-    </script>
-</div>
-</body>
-</html>
+{% endblock %}

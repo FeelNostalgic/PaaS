@@ -1,0 +1,36 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link type="text/css" rel="stylesheet" href="{{ url_for('static', filename='css/header.css') }}">
+    <link type="text/css" rel="stylesheet" href="{{ url_for('static', filename='css/body.css') }}">
+    <link type="text/css" rel="stylesheet" href="{{ url_for('static', filename='css/feedback.css') }}">
+    <link type="text/css" rel="stylesheet" href="{{ url_for('static', filename='css/hunts.css') }}">
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css"/>
+    {% block head %} {% endblock %}
+</head>
+<body>
+<div id="feedbackDiv">
+    <div id="feedback" class="feedback"></div>
+</div>
+
+<!-- Header Section -->
+<div class="header">
+    <div class="left">
+        <span class="username">{{ session.userinfo.given_name }}</span>
+    </div>
+
+    <div class="center">
+        <button class="navigation" onclick="window.location.href='/huntCreations'">Hunt Creations</button>
+        <button class="navigation" onclick="window.location.href='/myHunts'">Hunt</button>
+        <button class="navigation" onclick="window.location.href='/home'">Global hunts</button>
+        <button class="navigation" onclick="window.location.href='/newGame'">Plan a hunt</button>
+    </div>
+    <div class="right">
+        <a href="/logout" class="logout-link">Logout</a>
+    </div>
+</div>
+{% block body %} {% endblock %}
+</body>
+</html>

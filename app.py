@@ -64,7 +64,7 @@ def logout():
 @app.route('/home')
 def home():
     if "user" in session:
-        games = DatabaseAPI.find_all()
+        games = DatabaseAPI.find_all_games()
         games_list = []
         for game in games:
             game_data = {
@@ -86,7 +86,29 @@ def home():
 @app.route('/game/<string:game_id>')
 def game_detail(game_id):
     if "user" in session:
-        game = DatabaseAPI.find_game(game_id)
+        game = DatabaseAPI.find_game_by_id(game_id)
+        user_game = DatabaseAPI.find_user_game_by_game_id(game_id, session.get("user")["userinfo"]["sub"])
+
+        game_data = {
+            "id": str(game["_id"]),
+            "name": game["name"],
+            "creator": game["creator"]["name"],
+            "date": game["date"].strftime("%Y-%m-%d"),
+            "status": game["status"],
+            "markers": user_game['markers'] if user_game else game['markers'],
+            "area": game["area"],
+            "participating": user_game is not None
+        }
+        return render_template("game.html", session=session.get("user"), game=game_data)
+    else:
+        abort(404)
+
+
+@app.route('/participate/<string:game_id>')
+def participate(game_id):
+    if "user" in session:
+        game = DatabaseAPI.find_game_by_id(game_id)
+        DatabaseAPI.insert_new_user_game(game, session.get("user")["userinfo"]["sub"])
         game_data = {
             "id": str(game["_id"]),
             "name": game["name"],
@@ -95,18 +117,27 @@ def game_detail(game_id):
             "status": game["status"],
             "markers": game["markers"],
             "area": game["area"],
+            "participating": True
         }
-        return render_template("game.html", game=game_data, session=session.get("user"))
+        return render_template("game.html", session=session.get("user"), game=game_data)
     else:
         abort(404)
 
 
-@app.route('/participate/<string:game_id>')
-def participate(game_id):
+@app.route('/uploadFoundImage', methods=['POST'])
+def uploadFoundImage():
     if "user" in session:
-        return render_template("newGame.html", session=session.get("user"))
-    else:
-        abort(404)
+        if request.method == "POST":
+            data = request.get_json()
+            game_id = data.get('gameId')
+            user_id = session.get("user")["userinfo"]["sub"]
+            marker_id = data.get('markerId')
+            photo = data.get('photo')
+            user_game = DatabaseAPI.find_user_game_by_game_id(game_id, user_id)
+
+            DatabaseAPI.saveFoundImage(user_game, marker_id, photo)
+
+            return jsonify({'message': 'Datos guardados correctamente'})
 
 
 @app.route('/delete_game/<int:game_id>')
@@ -125,7 +156,7 @@ def editGame(game_id):
         abort(404)
 
 
-@app.route("/new_game")
+@app.route("/newGame")
 def newGame():
     if "user" in session:
         return render_template("newGame.html", session=session.get("user"))
@@ -158,6 +189,36 @@ def addGame():
     else:
         abort(404)
 
+
+@app.route('/myHunts')
+def myHunts():
+    if "user" in session:
+        user_games = DatabaseAPI.find_all_user_games(session.get("user")["userinfo"]["sub"])
+        print(user_games)
+        games = DatabaseAPI.find_games_by_id(user_games)
+        games_list = []
+        for game in games:
+            game_data = {
+                "id": str(game["_id"]),
+                "name": game["name"],
+                "creator": game["creator"]["name"],
+                "date": game["date"].strftime("%Y-%m-%d"),
+                "status": game["status"],
+                "markers": len(game["markers"]),
+                "area": game["area"],
+            }
+            games_list.append(game_data)
+
+        return render_template("HuntGames.html", session=session.get("user"), games=games_list)
+    else:
+        abort(404)
+
+@app.route('/huntCreations')
+def huntCreations():
+    if "user" in session:
+        pass
+    else:
+        abort(404)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', debug=True)

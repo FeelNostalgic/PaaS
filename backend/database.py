@@ -14,10 +14,12 @@ config_parser.read('appConfig.ini')
 
 config = {
     'database': config_parser['MONGO']['MONGO_DB'],
-    'games' : config_parser['MONGO']['GAMES_COLLECTION']
+    'games': config_parser['MONGO']['GAMES_COLLECTION'],
+    'user_games': config_parser['MONGO']['USER_GAMES_COLLECTION']
 }
 
 db = client[config['database']]
+
 
 class DatabaseAPI:
     def __init__(self):
@@ -27,12 +29,12 @@ class DatabaseAPI:
     def insert_new_game(user_sub, user_name, game_name, lat1, lon1, lat2, lon2, markers):
         collection = db[config['games']]
         data = {
-            'creator':{
+            'creator': {
                 'sub': user_sub,
                 'name': user_name
             },
             'name': game_name,
-            'area':{
+            'area': {
                 'lat1': lat1,
                 'lon1': lon1,
                 'lat2': lat2,
@@ -45,21 +47,70 @@ class DatabaseAPI:
         return collection.insert_one(data)
 
     @staticmethod
-    def find_all():
+    def insert_new_user_game(game, user_sub):
+        collection = db[config['user_games']]
+        markers = game['markers']
+        for marker in markers:
+            marker['found'] = False
+        data = {
+            'game': game['_id'],
+            'user': user_sub,
+            'date': datetime.now(),
+            'markers': markers
+        }
+        return collection.insert_one(data)
+
+    @staticmethod
+    def find_all_games():
         collection = db[config['games']]
-        return collection.find()
+        return collection.find().sort('date', -1)
 
     @staticmethod
-    def find_game(game_id):
-        return DatabaseAPI.__find_one({'_id': ObjectId(game_id)})
-
-    @staticmethod
-    def __find_one(query):
+    def find_games_by_id(game_ids):
         collection = db[config['games']]
-        return collection.find_one(query)
+        return collection.find({"_id": {"$in": game_ids}})
 
     @staticmethod
-    def printCollections():
-        collections = client.list_collection_names()
-        for collection in collections:
-            print(collection)
+    def find_game_by_id(game_id):
+        return DatabaseAPI.__find_the_most_recent_game({'_id': ObjectId(game_id)})
+
+    @staticmethod
+    def find_user_game_by_game_id(game_id, user_sub):
+        return DatabaseAPI.__find_the_most_recent_user_game({'game': ObjectId(game_id), 'user': user_sub})
+
+    @staticmethod
+    def saveFoundImage(user_game, marker_id, photo):
+        collection = db[config['user_games']]
+        markers = user_game['markers']
+        marker = next((m for m in markers if m['id'] == marker_id), None)
+        marker['found'] = True
+        marker['image'] = photo
+
+        data = {
+            'game': user_game['game'],
+            'user': user_game['user'],
+            'date': datetime.now(),
+            'markers': markers
+        }
+        return collection.insert_one(data)
+
+    @staticmethod
+    def find_all_user_games(user_id):
+        collection = db[config['user_games']]
+        return collection.distinct('game', {'user': user_id})
+
+    @staticmethod
+    def __find_the_most_recent_user_game(query):
+        collection = db[config['user_games']]
+        try:
+            return collection.find(query).sort('date', -1).limit(1).next()
+        except StopIteration:
+            return None
+
+    @staticmethod
+    def __find_the_most_recent_game(query):
+        collection = db[config['games']]
+        try:
+            return collection.find(query).sort('date', -1).limit(1).next()
+        except StopIteration:
+            return None

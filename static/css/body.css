@@ -24,3 +24,9 @@ h1 {
     color: #333;
     margin-bottom: 20px;
 }
+
+h2.title {
+    text-align: center;
+    color: #333;
+    margin-bottom: 20px;
+}

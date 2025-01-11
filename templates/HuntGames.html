@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+﻿{% extends "base.html" %}
 {% block head %}
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,7 +7,7 @@
 {% block body %}
 <!-- Main Content -->
 <div class="container">
-    <h1>Welcome, {{ session.userinfo.name }}</h1>
+    <h2 class="title">Your hunts</h2>
     <div id="games-list">
         {% for game in games %}
             <div class="game-item" onclick="window.location.href='/game/{{ game.id }}'">
