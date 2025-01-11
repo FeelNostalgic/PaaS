@@ -95,6 +95,11 @@ class DatabaseAPI:
         return collection.insert_one(data)
 
     @staticmethod
+    def find_all_games_created_by_user(user_id):
+        collection = db[config['games']]
+        return collection.find({"creator.sub": user_id}).sort('date', -1)
+
+    @staticmethod
     def find_all_user_games(user_id):
         collection = db[config['user_games']]
         return collection.distinct('game', {'user': user_id})

@@ -89,7 +89,6 @@ def game_detail(game_id):
         game = DatabaseAPI.find_game_by_id(game_id)
         user_game = DatabaseAPI.find_user_game_by_game_id(game_id, session.get("user")["userinfo"]["sub"])
 
-
         game_data = {
             "id": str(game["_id"]),
             "name": game["name"],
@@ -111,38 +110,20 @@ def participate(game_id):
     if "user" in session:
         game = DatabaseAPI.find_game_by_id(game_id)
         DatabaseAPI.insert_new_user_game(game, session.get("user")["userinfo"]["sub"])
-        game_data = {
-            "id": str(game["_id"]),
-            "name": game["name"],
-            "creator": game["creator"]["name"],
-            "date": game["date"].strftime("%Y-%m-%d"),
-            "status": game["status"],
-            "markers": game["markers"],
-            "area": game["area"],
-            "participating": True
-        }
         return redirect(f"/game/{game_id}")
     else:
         abort(404)
+
 
 @app.route('/unsubscribe/<string:game_id>')
 def unsubscribe(game_id):
     if "user" in session:
         DatabaseAPI.remove_user_game_by_game_id(game_id, session.get("user")["userinfo"]["sub"])
         game = DatabaseAPI.find_game_by_id(game_id)
-        game_data = {
-            "id": str(game["_id"]),
-            "name": game["name"],
-            "creator": game["creator"]["name"],
-            "date": game["date"].strftime("%Y-%m-%d"),
-            "status": game["status"],
-            "markers": game["markers"],
-            "area": game["area"],
-            "participating": False
-        }
         return redirect(f"/game/{game_id}")
     else:
         abort(404)
+
 
 @app.route('/uploadFoundImage', methods=['POST'])
 def uploadFoundImage():
@@ -171,7 +152,21 @@ def deleteGame(game_id):
 @app.route('/edit_game/<int:game_id>')
 def editGame(game_id):
     if "user" in session:
-        return render_template("newGame.html", session=session.get("user"))
+        game = DatabaseAPI.find_game_by_id(game_id)
+        if session.get("user")["userinfo"]["sub"] == game["creator"]["sub"]:
+            game_data = {
+                "id": str(game["_id"]),
+                "name": game["name"],
+                "creator": game["creator"]["name"],
+                "date": game["date"].strftime("%Y-%m-%d"),
+                "status": game["status"],
+                "markers": game["markers"],
+                "area": game["area"],
+                "participating": False
+            }
+            return render_template("EditGame.html", session=session.get("user"), game=game_data)
+        else:
+            abort(404)
     else:
         abort(404)
 
@@ -204,7 +199,6 @@ def addGame():
 
             DatabaseAPI.insert_new_game(user['sub'], user['given_name'], game_name, lat1, lon1, lat2, lon2, markers)
 
-            # Responder con un mensaje de éxito
             return jsonify({'message': 'Datos guardados correctamente'})
     else:
         abort(404)
@@ -214,7 +208,6 @@ def addGame():
 def myHunts():
     if "user" in session:
         user_games = DatabaseAPI.find_all_user_games(session.get("user")["userinfo"]["sub"])
-        print(user_games)
         games = DatabaseAPI.find_games_by_id(user_games)
         games_list = []
         for game in games:
@@ -234,12 +227,24 @@ def myHunts():
         abort(404)
 
 
-
-
 @app.route('/huntCreations')
 def huntCreations():
     if "user" in session:
-        pass
+        games = DatabaseAPI.find_all_games_created_by_user(session.get("user")["userinfo"]["sub"])
+        games_list = []
+        for game in games:
+            game_data = {
+                "id": str(game["_id"]),
+                "name": game["name"],
+                "creator": game["creator"]["name"],
+                "date": game["date"].strftime("%Y-%m-%d"),
+                "status": game["status"],
+                "markers": len(game["markers"]),
+                "area": game["area"],
+            }
+            games_list.append(game_data)
+
+        return render_template("HuntCreations.html", session=session.get("user"), games=games_list)
     else:
         abort(404)
 

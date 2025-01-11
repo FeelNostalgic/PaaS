@@ -373,7 +373,6 @@
                 updateMarkerList();
             });
 
-            // Localize the user and generate map
             function locateUser() {
                 if (navigator.geolocation) {
                     navigator.geolocation.getCurrentPosition(function (position) {
@@ -393,15 +392,30 @@
                 }
             }
 
-            function initMap(latitude, longitude) {
-                map.setView([latitude, longitude], 13);
+            function initMap() {
+                var latLngBounds = [
+                    [{{ game.area.lat1 }}, {{ game.area.lon1 }}],
+                    [{{ game.area.lat2 }}, {{ game.area.lon2 }}]
+                ];
 
+                var lat = ({{ game.area.lat1 }} + {{ game.area.lat2 }}) / 2;
+                var lon = ({{ game.area.lon1 }} + {{ game.area.lon2 }}) / 2;
+                map.setView([lat, lon], 13);
                 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                 }).addTo(map);
+                L.rectangle(latLngBounds).addTo(map);
+                map.fitBounds(latLngBounds);
+
+                markers.forEach(marker => {
+                    L.marker([marker.lat, marker.lng]).addTo(map)
+                        .bindPopup(`Cache #${(markers.indexOf(marker) + 1)} found!`)
+                        .openPopup();
+
+                });
             }
 
-            window.onload = locateUser;
+            window.onload = initMap;
 
             function saveGame() {
                 var gameName = document.getElementById('gameName').value;
