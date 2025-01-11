@@ -1,71 +1,80 @@
 ﻿.game-item {
-    border: 2px solid #ccc;
-    padding: 15px;
-    margin: 15px 0;
-    border-radius: 10px;
-    display: flex;
-    align-items: center;  /* Esto asegura que todos los elementos estén alineados verticalmente */
-    justify-content: flex-start;  /* Alineamos los elementos hacia la izquierda */
-    background-color: #f9f9f9;
-    cursor: pointer;
-    transition: background-color 0.3s ease;
+  border: 2px solid #ccc;
+  padding: 15px;
+  margin: 15px 0;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  background-color: #f9f9f9;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
 }
 
 .game-item:hover {
-    background-color: #f0f0f0;
+  background-color: #f0f0f0;
 }
 
 .game-info {
-    margin-left: 20px;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    height: 100%;
+  margin-left: 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  height: 100%;
+  width: 100%;
 }
 
 .game-info h2 {
-    margin: 0;
-    font-size: 24px;
-    color: #333;
+  margin: 0;
+  font-size: 24px;
+  color: #333;
 }
 
 .game-details {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
 }
 
-.game-details p {
-    margin: 0;
-    font-size: 14px;
-    color: #555;
+.game-details-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  margin-bottom: 10px;
+}
+
+.game-details span {
+  margin: 0;
+  font-size: 16px;
+  color: #555;
 }
 
 .game-status {
-    font-weight: bold;
-    padding: 5px 10px;
-    border-radius: 5px;
+  font-weight: bold;
+  padding: 5px 10px;
+  border-radius: 5px;
 }
 
 .game-status.completed {
-    background-color: red;
-    color: white;
+  background-color: red;
+  color: white;
 }
 
 .game-status.in-progress {
-    background-color: green;
-    color: white;
+  background-color: green;
+  color: white;
 }
 
 .game-status.in-revision {
-    background-color: blue;
-    color: white;
+  background-color: blue;
+  color: white;
 }
 
 .map-preview {
-    width: 150px;
-    height: 150px;
-    border-radius: 10px;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-    flex-shrink: 0;
+  width: 150px;
+  height: 150px;
+  border-radius: 10px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  flex-shrink: 0;
 }
