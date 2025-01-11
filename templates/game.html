@@ -14,7 +14,6 @@
             height: 80%;
             margin-top: 80px;
             display: flex;
-            flex: 1;
         }
 
         #map {
@@ -30,6 +29,7 @@
             background-color: #f9f9f9;
             padding: 20px;
             box-shadow: -2px 0 5px rgba(0, 0, 0, 0.1);
+            position: relative;
         }
 
         .sidebar h2 {
@@ -54,8 +54,8 @@
         }
 
         .sidebar .actions {
+            margin-top: auto;
             text-align: right;
-            margin-top: 20px;
         }
 
         .sidebar .actions button {
@@ -109,26 +109,11 @@
             overflow: hidden;
             background-color: #f1f1f1;
         }
-
-        .incomplete-marker {
-            border: 2px solid red;
-            padding: 5px;
-            margin-bottom: 5px;
-            background-color: #ffe6e6;
-        }
-
-        .warning {
-            color: red;
-            font-weight: bold;
-            font-size: 12px;
-            padding: 0;
-        }
-
     </style>
 {% endblock %}
 
 {% block body %}
-        <!-- Main Content -->
+    <!-- Main Content -->
     <div class="container">
         <div id="map"></div>
 
@@ -160,7 +145,7 @@
                                         <img src="{{ marker.clueImage }}" alt="Clue Image">
                                     {% endif %}
                                     <div id="uploaded-photo-{{ marker.id }}" class="uploaded-photo">
-                                        <img src="{{ marker.image }}" alt="Found image">
+                                        <img src="{{ marker.image }}" alt="Found image" style="max-width: 300px; max-height: 300px; margin-top: 10px; display: block;">
                                     </div>
                                 </div>
                             </div>
@@ -168,24 +153,28 @@
                             <div class="marker-item">
                                 <button id="foldout-btn-{{ marker.id }}" class="foldout-btn" onclick="toggleMarkerDetails({{ marker.id }})">Cache #{{ loop.index }}</button>
                                 <div id="marker-details-{{ marker.id }}" class="marker-details" style="display: none;">
+                                    <div id="post-data-{{ marker.id }}" style="display:none;">
+                                        {% if marker.clueText %}
+                                            <p><strong>Clue Text:</strong> {{ marker.clueText }}</p>
+                                        {% endif %}
+                                    </div>
                                     {% if marker.clueText %}
-                                        <p><strong>Clue Text:</strong> {{ marker.clueText }}</p>
+                                        <p id="clueText-{{ marker.id }}" style="display: block;"><strong>Clue Text:</strong> {{ marker.clueText }}</p>
                                     {% endif %}
                                     {% if marker.clueImage %}
-                                        <p><strong>Clue Image:</strong></p>
-                                        <img src="{{ marker.clueImage }}" alt="Clue Image">
+                                        <p id="clueImage-{{ marker.id }}" style="display: block;"><strong>Clue Image:</strong></p>
+                                        <img src="{{ marker.clueImage }}" alt="Clue Image" style="max-width: 300px; max-height: 300px; margin-top: 10px; display: block;">
                                     {% endif %}
                                     {% if game.participating %}
-                                        <!-- Botón para subir la imagen -->
-                                        <p><strong>Upload a photo:</strong></p>
-                                        <input type="file" id="upload-photo-{{ marker.id }}" accept="image/*" onchange="handleImageUpload(event, {{ marker.id }})">
-                                        <div id="uploaded-photo-{{ marker.id }}" class="uploaded-photo"></div>
+                                        <p id="label-photo-{{ marker.id }}" style="display: block;"><strong>Upload a photo:</strong></p>
+                                        <input type="file" id="upload-photo-{{ marker.id }}" accept="image/*" onchange="handleImageUpload(event, {{ marker.id }})" style="display: block;">
+                                        <div id="uploaded-photo-{{ marker.id }}" class="uploaded-photo" style="max-width: 300px; max-height: 300px; margin-top: 10px; display: block;"></div>
 
-                                        <!-- Botón para borrar la foto -->
-                                        <button id="delete-photo-btn-{{ marker.id }}" class="delete-photo-btn" onclick="deletePhoto({{ marker.id }})" style="display: none;">Delete Photo</button>
+                                        <button id="delete-photo-btn-{{ marker.id }}" class="delete-photo-btn" onclick="deletePhoto({{ marker.id }})"
+                                                style="margin-top: 10px; background-color: red; color: white; display: none;">Remove Image
+                                        </button>
 
-                                        <!-- Botón de "Found" -->
-                                        <button id="found-btn-{{ marker.id }}" class="found-btn" onclick="markAsFound({{ marker.id }})">Found</button>
+                                        <button id="found-btn-{{ marker.id }}" class="found-btn" onclick="markAsFound({{ marker.id }})" style="display: block;">Found</button>
                                     {% endif %}
                                 </div>
                             </div>
@@ -197,9 +186,9 @@
                     <div class="actions">
                         <button class="submitButton" onclick="window.location.href='/participate/{{ game.id }}'">Participate</button>
                     </div>
-                {%  else %}
+                {% else %}
                     <div class="actions">
-                       <button class="submitButton" onclick="window.location.href='/unsubscribe/{{ game.id }}'">Unsubscribed</button>
+                        <button class="submitButton" onclick="window.location.href='/unsubscribe/{{ game.id }}'">Unsubscribed</button>
                     </div>
                 {% endif %}
             </div>
@@ -281,19 +270,31 @@
                         body: JSON.stringify(data)
                     }).then(response => response.json())
                         .then(data => {
-                            var foundButton = document.getElementById(`found-btn-${markerId}`);
+                            var foundButton = document.getElementById(`found-btn-${data.markerId}`);
                             foundButton.style.display = "none";
-                            var foldout = document.getElementById(`foldout-btn-${marker.id}`);
+                            var foldout = document.getElementById(`foldout-btn-${data.markerId}`);
                             foldout.style.background = "green";
+                            var clueText = document.getElementById(`clueText-${data.markerId}`);
+                            if(clueText) clueText.style.display = "none";
+                            var labelPhoto = document.getElementById(`label-photo-${data.markerId}`);
+                            labelPhoto.style.display = "none";
+                            var uploadPhoto = document.getElementById(`upload-photo-${data.markerId}`);
+                            uploadPhoto.style.display = "none";
+                            var box = document.getElementById(`marker-details-${data.markerId}`);
+                            box.style.display = "none";
+                            var postData = document.getElementById(`post-data-${data.markerId}`);
+                            postData.style.display = "block";
 
                             L.marker([marker.lat, marker.lng]).addTo(map)
                                 .bindPopup(`Cache #${(markers.indexOf(marker) + 1)} found!`)
                                 .openPopup();
 
-                            const deleteButton = document.getElementById(`delete-photo-btn-${markerId}`);
+                            const deleteButton = document.getElementById(`delete-photo-btn-${data.markerId}`);
                             deleteButton.style.display = "none";
+                            showFeedback(data.message, 1500);
                         })
                         .catch(error => {
+                            console.log(error);
                             showFeedback("An error occurred while uploading the photo. Please try again.", 1500, true);
                         });
                 }
@@ -332,7 +333,7 @@
                     marker.foundImage = "";
                     deleteButton.style.display = "none";
                 }
-               </script>
+            </script>
         </div>
     </div>
 {% endblock %}

@@ -74,7 +74,7 @@
             background-color: #00c6ff;
         }
 
-        button {
+        .actions button {
             width: 100%;
             padding: 10px;
             background-color: #4facfe;
@@ -86,6 +86,10 @@
             font-weight: bold;
             transition: background 0.3s;
             margin-bottom: 10px;
+        }
+
+        .delete-photo-btn {
+            display: none;
         }
 
         .incomplete-marker {
@@ -106,358 +110,370 @@
 {% endblock %}
 {% block body %}
 
-<div id="feedbackDiv">
-    <div id="feedback" class="feedback"></div>
-</div>
-<!-- Main Content -->
-<div class="container">
-    <div id="map"></div>
-
-    <div class="sidebar">
-        <label for="gameName">Game Name:</label>
-        <input type="text" id="gameName" placeholder="Enter game name" required>
-
-        <div class="marker-list" id="markerList">
-            <!-- Markers will be dynamically added here -->
-        </div>
-
-        <div class="actions">
-            <button onclick="saveGame()">Save Game</button>
-        </div>
+    <div id="feedbackDiv">
+        <div id="feedback" class="feedback"></div>
     </div>
+    <!-- Main Content -->
+    <div class="container">
+        <div id="map"></div>
+
+        <div class="sidebar">
+            <label for="gameName">Game Name:</label>
+            <input type="text" id="gameName" placeholder="Enter game name" required>
+
+            <div class="marker-list" id="markerList">
+                <!-- Markers will be dynamically added here -->
+            </div>
+
+            <div class="actions">
+                <button onclick="saveGame()">Save Game</button>
+            </div>
+        </div>
 
 
-    <!-- Incluir Leaflet JS -->
-    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
-    <!-- Incluir Leaflet Draw JS -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+        <!-- Incluir Leaflet JS -->
+        <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+        <!-- Incluir Leaflet Draw JS -->
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
 
-    <script>
-        var map = L.map('map'); //Empty map
-        var isAreaCreated = false;
-        var lat1, lon1, lat2, lon2 = 0;
-        var latMin, latMax, lngMin, lngMax = 0;
+        <script>
+            var map = L.map('map'); //Empty map
+            var isAreaCreated = false;
+            var lat1, lon1, lat2, lon2 = 0;
+            var latMin, latMax, lngMin, lngMax = 0;
 
-        // Draw tools
-        var drawnItems = new L.FeatureGroup();
-        map.addLayer(drawnItems);
+            // Draw tools
+            var drawnItems = new L.FeatureGroup();
+            map.addLayer(drawnItems);
 
-        // Only draw rectangles
-        var drawControl = new L.Control.Draw({
-            edit: {
-                featureGroup: drawnItems
-            },
-            draw: {
-                rectangle: true,
-                polygon: false,
-                polyline: false,
-                circle: false,
-                marker: true,
-                circlemarker: false
-            }
-        });
+            // Only draw rectangles
+            var drawControl = new L.Control.Draw({
+                edit: {
+                    featureGroup: drawnItems
+                },
+                draw: {
+                    rectangle: true,
+                    polygon: false,
+                    polyline: false,
+                    circle: false,
+                    marker: true,
+                    circlemarker: false
+                }
+            });
 
-        map.addControl(drawControl);
+            map.addControl(drawControl);
 
-        var markers = []; // Array to store markers with their data
+            var markers = []; // Array to store markers with their data
 
-        map.on('draw:created', function (event) {
-            if (isAreaCreated) {
-                var layer = event.layer;
-                if (layer instanceof L.Marker) { //Add cache marker
-                    var lat = layer.getLatLng().lat;
-                    var lng = layer.getLatLng().lng;
-                    if (lat >= latMin && lat <= latMax && lng >= lngMin && lng <= lngMax) //Inside the area
-                    {
-                        var markerData = {
-                            id: L.stamp(layer), // Unique ID for the marker
-                            lat: layer.getLatLng().lat,
-                            lng: layer.getLatLng().lng,
-                            clueText: "",
-                            clueImage: null,
-                            layer: layer
-                        };
-                        markers.push(markerData);
+            map.on('draw:created', function (event) {
+                if (isAreaCreated) {
+                    var layer = event.layer;
+                    if (layer instanceof L.Marker) { //Add cache marker
+                        var lat = layer.getLatLng().lat;
+                        var lng = layer.getLatLng().lng;
+                        if (lat >= latMin && lat <= latMax && lng >= lngMin && lng <= lngMax) //Inside the area
+                        {
+                            var markerData = {
+                                id: L.stamp(layer), // Unique ID for the marker
+                                lat: layer.getLatLng().lat,
+                                lng: layer.getLatLng().lng,
+                                clueText: "",
+                                clueImage: null,
+                                layer: layer
+                            };
+                            markers.push(markerData);
+                            drawnItems.addLayer(layer);
+
+                            layer.on('click', function () {
+                                updateMarkerPopup(markerData);
+                                layer.openPopup();
+                            });
+
+                            updateMarkerList();
+                        } else {
+                            showFeedback("Marker outside the area", 1500, true);
+                        }
+                    } else {
+                        showFeedback("Area is already created", 1500, true);
+                    }
+                } else {
+                    var layer = event.layer;
+                    if (layer instanceof L.Rectangle) { // Add area
+
                         drawnItems.addLayer(layer);
 
-                        layer.on('click', function () {
-                            updateMarkerPopup(markerData);
-                            layer.openPopup();
-                        });
+                        var bounds = layer.getBounds();
+                        lat1 = bounds.getSouthWest().lat;
+                        lon1 = bounds.getSouthWest().lng;
+                        lat2 = bounds.getNorthEast().lat;
+                        lon2 = bounds.getNorthEast().lng;
 
-                        updateMarkerList();
+                        latMin = Math.min(lat1, lat2);
+                        latMax = Math.max(lat1, lat2);
+                        lngMin = Math.min(lon1, lon2);
+                        lngMax = Math.max(lon1, lon2);
+
+                        isAreaCreated = true;
+
                     } else {
-                        showFeedback("Marker outside the area", 1500, true);
+                        showFeedback("Please create an area first", 1500, true);
                     }
                 }
-            } else {
-                var layer = event.layer;
-                if (layer instanceof L.Rectangle) { // Add area
+            });
 
-                    drawnItems.addLayer(layer);
-
-                    var bounds = layer.getBounds();
-                    lat1 = bounds.getSouthWest().lat;
-                    lon1 = bounds.getSouthWest().lng;
-                    lat2 = bounds.getNorthEast().lat;
-                    lon2 = bounds.getNorthEast().lng;
-
-                    latMin = Math.min(lat1, lat2);
-                    latMax = Math.max(lat1, lat2);
-                    lngMin = Math.min(lon1, lon2);
-                    lngMax = Math.max(lon1, lon2);
-
-                    isAreaCreated = true;
-
-                } else {
-                    showFeedback("Please create an area first", 1500, true);
-                }
-            }
-        });
-
-        function updateMarkerPopup(markerData) {
-            var content = `
+            function updateMarkerPopup(markerData) {
+                var content = `
             <p><b>ID:</b> ${markerData.id}</p>
             <p><b>Position:</b> (${markerData.lat.toFixed(6)}, ${markerData.lng.toFixed(6)})</p>
             <p><b>Clue Text:</b> ${markerData.clueText || 'None'}</p>
             ${markerData.clueImage ? `<img src="${markerData.clueImage}" alt="Clue Image" style="max-width: 200px;">` : ''}`;
-            markerData.layer.unbindPopup(); // Remove any existing popup
-            markerData.layer.bindPopup(content); // Bind the updated popup
-        }
+                markerData.layer.unbindPopup(); // Remove any existing popup
+                markerData.layer.bindPopup(content); // Bind the updated popup
+            }
 
-        function updateMarkerList(warning = false) {
-            var markerList = document.getElementById('markerList');
-            markerList.innerHTML = ""; // Clear current list
+            function updateMarkerList(warning = false) {
+                var markerList = document.getElementById('markerList');
+                markerList.innerHTML = ""; // Clear current list
 
-            markers.forEach((marker, index) => {
-                var markerItem = document.createElement('div');
-                markerItem.className = 'marker-item';
+                markers.forEach((marker, index) => {
+                    var markerItem = document.createElement('div');
+                    markerItem.className = 'marker-item';
 
-                var missingClueText = !marker.clueText || marker.clueText.trim() === '';
-                var missingClueImage = !marker.clueImage;
+                    var missingClueText = !marker.clueText || marker.clueText.trim() === '';
+                    var missingClueImage = !marker.clueImage;
 
-                var warningClueText = '';
-                var warningClueImage = '';
-                if (warning) {
-                    if (missingClueText && missingClueImage) {
-                        markerItem.classList.add('incomplete-marker');
-                        warningClueText = `
-                <p class="warning">
-                     ${missingClueText ? "Clue Text is missing. " : ""}
-                </p>
+                    var warningClueText = '';
+                    var warningClueImage = '';
+                    if (warning) {
+                        if (missingClueText && missingClueImage) {
+                            markerItem.classList.add('incomplete-marker');
+                            warningClueText = `
+                        <p class="warning">
+                             ${missingClueText ? "Clue Text is missing. " : ""}
+                        </p>
+                            `;
+                            markerItem.classList.add('incomplete-marker');
+                            warningClueImage = `
+                        <p class="warning">
+                            ${missingClueImage ? "Clue Image is missing." : ""}
+                        </p>
                     `;
-                        markerItem.classList.add('incomplete-marker');
-                        warningClueImage = `
-                <p class="warning">
-                    ${missingClueImage ? "Clue Image is missing." : ""}
-                </p>
-                    `;
-                    }
-                }
-
-
-                markerItem.innerHTML = `
-            <p>Marker ${index + 1}: (${marker.lat.toFixed(6)}, ${marker.lng.toFixed(6)})</p>
-            <label>Clue Text:</label>
-            <textarea rows="3" onchange="updateClueText(${index}, this.value)">${marker.clueText || ''}</textarea>
-            ${warningClueText}
-            <label>Clue Image:</label>
-            <input type="file" accept="image/*" onchange="updateClueImage(${index}, this)">
-            ${marker.clueImage ? `<img src="${marker.clueImage}" alt="Clue Image">` : ''}
-            ${warningClueImage}
-                `;
-
-                markerList.appendChild(markerItem);
-            });
-        }
-
-        function updateClueText(index, text) {
-            markers[index].clueText = text;
-        }
-
-        function updateClueImage(index, input) {
-            var reader = new FileReader();
-            reader.onload = function (e) {
-                markers[index].clueImage = e.target.result;
-                updateMarkerList();
-            };
-            reader.readAsDataURL(input.files[0]);
-        }
-
-        map.on('draw:edited', function (event) {
-            var layers = event.layers;
-
-            markersToRemove = [];
-            layers.eachLayer(function (layer) {
-                if (layer instanceof L.Marker) {
-                    var markerId = L.stamp(layer);
-                    var marker = markers.find(m => m.id === markerId);
-                    var lat = layer.getLatLng().lat;
-                    var lng = layer.getLatLng().lng;
-                    if (lat >= latMin && lat <= latMax && lng >= lngMin && lng <= lngMax) //Inside the area
-                    {
-                        if (marker) {
-                            marker.lat = lat;
-                            marker.lng = lng;
                         }
-                    } else {
-                        markersToRemove.push(marker);
                     }
-                }
 
-                if (layer instanceof L.Rectangle) {
-                    var bounds = layer.getBounds();
-                    lat1 = bounds.getSouthWest().lat;
-                    lon1 = bounds.getSouthWest().lng;
-                    lat2 = bounds.getNorthEast().lat;
-                    lon2 = bounds.getNorthEast().lng;
 
-                    latMin = Math.min(lat1, lat2);
-                    latMax = Math.max(lat1, lat2);
-                    lngMin = Math.min(lon1, lon2);
-                    lngMax = Math.max(lon1, lon2);
+                    markerItem.innerHTML = `
+                    <p>Marker ${index + 1}: (${marker.lat.toFixed(6)}, ${marker.lng.toFixed(6)})</p>
+                    <label>Clue Text:</label>
+                    <textarea rows="3" onchange="updateClueText(${index}, this.value)">${marker.clueText || ''}</textarea>
+                    ${warningClueText}
+                    <label>Clue Image:</label>
+                    <input type="file" accept="image/*" onchange="updateClueImage(${index}, this)">
+                     ${marker.clueImage ? `
+                        <div>
+                            <img src="${marker.clueImage}" alt="Clue Image" style="max-width: 300px; max-height: 300px; margin-top: 10px; display: block;">
+                             <button type="button" onclick="removeClueImage(${index})" style="margin-top: 10px; background-color: red; color: white; display: block;">Remove Image</button>
+                        </div>
+                    ` : ''}
+                    ${warningClueImage}                    `;
+                    markerList.appendChild(markerItem);
+                });
+            }
 
-                    for (var i = 0; i < markers.length; i++) {
-                        var marker = markers[i];
-                        var lat = marker.lat;
-                        var lng = marker.lng;
-                        if (!(lat >= latMin && lat <= latMax && lng >= lngMin && lng <= lngMax)) //Inside the area
+            function updateClueText(index, text) {
+                markers[index].clueText = text;
+            }
+
+            function updateClueImage(index, input) {
+                var reader = new FileReader();
+                reader.onload = function (e) {
+                    markers[index].clueImage = e.target.result;
+                    updateMarkerList();
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+
+            function removeClueImage(index) {
+                markers[index].clueImage = null;
+                updateMarkerList();
+            }
+
+            map.on('draw:edited', function (event) {
+                var layers = event.layers;
+
+                markersToRemove = [];
+                layers.eachLayer(function (layer) {
+                    if (layer instanceof L.Marker) {
+                        var markerId = L.stamp(layer);
+                        var marker = markers.find(m => m.id === markerId);
+                        var lat = layer.getLatLng().lat;
+                        var lng = layer.getLatLng().lng;
+                        if (lat >= latMin && lat <= latMax && lng >= lngMin && lng <= lngMax) //Inside the area
                         {
+                            if (marker) {
+                                marker.lat = lat;
+                                marker.lng = lng;
+                            }
+                        } else {
                             markersToRemove.push(marker);
                         }
                     }
-                }
-            });
 
+                    if (layer instanceof L.Rectangle) {
+                        var bounds = layer.getBounds();
+                        lat1 = bounds.getSouthWest().lat;
+                        lon1 = bounds.getSouthWest().lng;
+                        lat2 = bounds.getNorthEast().lat;
+                        lon2 = bounds.getNorthEast().lng;
 
-            markersToRemove.forEach(marker => {
-                showFeedback(`Markers outside the area will be removed`, 1500, true);
-                marker.layer.setOpacity(0);
-                markers = markers.filter(m => m.id !== marker.id);
-            });
+                        latMin = Math.min(lat1, lat2);
+                        latMax = Math.max(lat1, lat2);
+                        lngMin = Math.min(lon1, lon2);
+                        lngMax = Math.max(lon1, lon2);
 
-            updateMarkerList();
-        });
-
-        map.on('draw:deleted', function (event) {
-            var layers = event.layers;
-
-            layers.eachLayer(function (layer) {
-                if (layer instanceof L.Marker) {
-                    var markerId = L.stamp(layer);
-                    markers = markers.filter(m => m.id !== markerId);
-                }
-
-                if (layer instanceof L.Rectangle) {
-                    lat1 = 0;
-                    lon1 = 0;
-                    lat2 = 0;
-                    lon2 = 0;
-                    isAreaCreated = false;
-                    drawnItems.clearLayers();
-                    markers = [];
-                }
-            });
-            updateMarkerList();
-        });
-
-        // Localize the user and generate map
-        function locateUser() {
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(function (position) {
-                    var lat = position.coords.latitude;
-                    var lon = position.coords.longitude;
-
-                    initMap(lat, lon);
-
-                    L.marker([lat, lon]).addTo(map)
-                        .bindPopup("You are here")
-                        .openPopup();
-                }, function (error) {
-                    console.log("Error al obtener la ubicación: " + error.message);
+                        for (var i = 0; i < markers.length; i++) {
+                            var marker = markers[i];
+                            var lat = marker.lat;
+                            var lng = marker.lng;
+                            if (!(lat >= latMin && lat <= latMax && lng >= lngMin && lng <= lngMax)) //Inside the area
+                            {
+                                markersToRemove.push(marker);
+                            }
+                        }
+                    }
                 });
-            } else {
-                showFeedback("Geolocalización no es soportada por este navegador.", 1500, true);
+
+
+                markersToRemove.forEach(marker => {
+                    showFeedback(`
+                Markers outside the area will be removed
+                    `, 1500, true);
+                    marker.layer.setOpacity(0);
+                    markers = markers.filter(m => m.id !== marker.id);
+                });
+
+                updateMarkerList();
+            });
+
+            map.on('draw:deleted', function (event) {
+                var layers = event.layers;
+
+                layers.eachLayer(function (layer) {
+                    if (layer instanceof L.Marker) {
+                        var markerId = L.stamp(layer);
+                        markers = markers.filter(m => m.id !== markerId);
+                    }
+
+                    if (layer instanceof L.Rectangle) {
+                        lat1 = 0;
+                        lon1 = 0;
+                        lat2 = 0;
+                        lon2 = 0;
+                        isAreaCreated = false;
+                        drawnItems.clearLayers();
+                        markers = [];
+                    }
+                });
+                updateMarkerList();
+            });
+
+            // Localize the user and generate map
+            function locateUser() {
+                if (navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition(function (position) {
+                        var lat = position.coords.latitude;
+                        var lon = position.coords.longitude;
+
+                        initMap(lat, lon);
+
+                        L.marker([lat, lon]).addTo(map)
+                            .bindPopup("You are here")
+                            .openPopup();
+                    }, function (error) {
+                        console.log("Error al obtener la ubicación: " + error.message);
+                    });
+                } else {
+                    showFeedback("Geolocalización no es soportada por este navegador.", 1500, true);
+                }
             }
-        }
 
-        function initMap(latitude, longitude) {
-            map.setView([latitude, longitude], 13);
+            function initMap(latitude, longitude) {
+                map.setView([latitude, longitude], 13);
 
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            }).addTo(map);
-        }
-
-        window.onload = locateUser;
-
-        function saveGame() {
-            var gameName = document.getElementById('gameName').value;
-
-            if (!gameName) {
-                showFeedback("Please enter a game name.", 1500, true);
-                return;
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                }).addTo(map);
             }
 
-            if (lat1 === 0 || lon1 === 0 || lat2 === 0 || lon2 === 0) {
-                showFeedback("Please create an area for the game.", 1500, true);
-                return;
-            }
+            window.onload = locateUser;
 
-            if (markers.length === 0) {
-                showFeedback("Please add at least one marker.", 1500, true);
-                return;
-            }
+            function saveGame() {
+                var gameName = document.getElementById('gameName').value;
 
-            updateMarkerList(true);
-
-            for (let marker of markers) {
-                if (!marker.clueText && !marker.clueImage) {
-                    showFeedback("Each marker must have at least a clue text or image.", 1500, true);
+                if (!gameName) {
+                    showFeedback("Please enter a game name.", 1500, true);
                     return;
                 }
-            }
 
-            var data = {
-                gameName: gameName,
-                area: {
-                    lat1: lat1,
-                    lon1: lon1,
-                    lat2: lat2,
-                    lon2: lon2
-                },
-                markers: []
-            };
+                if (lat1 === 0 || lon1 === 0 || lat2 === 0 || lon2 === 0) {
+                    showFeedback("Please create an area for the game.", 1500, true);
+                    return;
+                }
 
-            markers.forEach(marker => {
-                data.markers.push({
-                    id: marker.id,
-                    lat: marker.lat,
-                    lng: marker.lng,
-                    clueText: marker.clueText,
-                    clueImage: marker.clueImage
+                if (markers.length === 0) {
+                    showFeedback("Please add at least one marker.", 1500, true);
+                    return;
+                }
+
+                updateMarkerList(true);
+
+                for (let marker of markers) {
+                    if (!marker.clueText && !marker.clueImage) {
+                        showFeedback("Each marker must have at least a clue text or image.", 1500, true);
+                        return;
+                    }
+                }
+
+                var data = {
+                    gameName: gameName,
+                    area: {
+                        lat1: lat1,
+                        lon1: lon1,
+                        lat2: lat2,
+                        lon2: lon2
+                    },
+                    markers: []
+                };
+
+                markers.forEach(marker => {
+                    data.markers.push({
+                        id: marker.id,
+                        lat: marker.lat,
+                        lng: marker.lng,
+                        clueText: marker.clueText,
+                        clueImage: marker.clueImage
+                    });
                 });
-            });
 
-            fetch('/add_game', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(data)
-            })
-                .then(response => response.json())
-                .then(data => {
-                    showFeedback("Game saved successfully.");
-                    setTimeout(() => {
-                        window.location.href = '/home';
-                    }, 1500);
-
+                fetch('/add_game', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
                 })
-                .catch(error => {
-                    showFeedback("Error when sending data", 1500, true);
-                });
-        }
-    </script>
-</div>
+                    .then(response => response.json())
+                    .then(data => {
+                        showFeedback("Game saved successfully.");
+                        setTimeout(() => {
+                            window.location.href = '/home';
+                        }, 1500);
+
+                    })
+                    .catch(error => {
+                        showFeedback("Error when sending data", 1500, true);
+                    });
+            }
+        </script>
+    </div>
 {% endblock %}

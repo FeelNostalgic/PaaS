@@ -89,6 +89,7 @@ def game_detail(game_id):
         game = DatabaseAPI.find_game_by_id(game_id)
         user_game = DatabaseAPI.find_user_game_by_game_id(game_id, session.get("user")["userinfo"]["sub"])
 
+
         game_data = {
             "id": str(game["_id"]),
             "name": game["name"],
@@ -99,6 +100,7 @@ def game_detail(game_id):
             "area": game["area"],
             "participating": user_game is not None
         }
+
         return render_template("game.html", session=session.get("user"), game=game_data)
     else:
         abort(404)
@@ -119,10 +121,28 @@ def participate(game_id):
             "area": game["area"],
             "participating": True
         }
-        return render_template("game.html", session=session.get("user"), game=game_data)
+        return redirect(f"/game/{game_id}")
     else:
         abort(404)
 
+@app.route('/unsubscribe/<string:game_id>')
+def unsubscribe(game_id):
+    if "user" in session:
+        DatabaseAPI.remove_user_game_by_game_id(game_id, session.get("user")["userinfo"]["sub"])
+        game = DatabaseAPI.find_game_by_id(game_id)
+        game_data = {
+            "id": str(game["_id"]),
+            "name": game["name"],
+            "creator": game["creator"]["name"],
+            "date": game["date"].strftime("%Y-%m-%d"),
+            "status": game["status"],
+            "markers": game["markers"],
+            "area": game["area"],
+            "participating": False
+        }
+        return redirect(f"/game/{game_id}")
+    else:
+        abort(404)
 
 @app.route('/uploadFoundImage', methods=['POST'])
 def uploadFoundImage():
@@ -137,7 +157,7 @@ def uploadFoundImage():
 
             DatabaseAPI.saveFoundImage(user_game, marker_id, photo)
 
-            return jsonify({'message': 'Datos guardados correctamente'})
+            return jsonify({'message': 'Image saved successfully!', 'markerId': marker_id})
 
 
 @app.route('/delete_game/<int:game_id>')
@@ -214,24 +234,7 @@ def myHunts():
         abort(404)
 
 
-@app.route('/unsubscribe/<string:game_id>')
-def unsubscribe(game_id):
-    if "user" in session:
-        DatabaseAPI.remove_user_game_by_game_id(game_id, session.get("user")["userinfo"]["sub"])
-        game = DatabaseAPI.find_game_by_id(game_id)
-        game_data = {
-            "id": str(game["_id"]),
-            "name": game["name"],
-            "creator": game["creator"]["name"],
-            "date": game["date"].strftime("%Y-%m-%d"),
-            "status": game["status"],
-            "markers": game["markers"],
-            "area": game["area"],
-            "participating": False
-        }
-        return render_template("game.html", session=session.get("user"), game=game_data)
-    else:
-        abort(404)
+
 
 @app.route('/huntCreations')
 def huntCreations():
