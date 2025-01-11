@@ -64,7 +64,7 @@ def logout():
 @app.route('/home')
 def home():
     if "user" in session:
-        games = DatabaseAPI.find_all_games()
+        games = DatabaseAPI.find_all_games(session.get("user")["userinfo"]["sub"])
         games_list = []
         for game in games:
             game_data = {
@@ -213,12 +213,33 @@ def myHunts():
     else:
         abort(404)
 
+
+@app.route('/unsubscribe/<string:game_id>')
+def unsubscribe(game_id):
+    if "user" in session:
+        DatabaseAPI.remove_user_game_by_game_id(game_id, session.get("user")["userinfo"]["sub"])
+        game = DatabaseAPI.find_game_by_id(game_id)
+        game_data = {
+            "id": str(game["_id"]),
+            "name": game["name"],
+            "creator": game["creator"]["name"],
+            "date": game["date"].strftime("%Y-%m-%d"),
+            "status": game["status"],
+            "markers": game["markers"],
+            "area": game["area"],
+            "participating": False
+        }
+        return render_template("game.html", session=session.get("user"), game=game_data)
+    else:
+        abort(404)
+
 @app.route('/huntCreations')
 def huntCreations():
     if "user" in session:
         pass
     else:
         abort(404)
+
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', debug=True)

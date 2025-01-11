@@ -61,14 +61,14 @@ class DatabaseAPI:
         return collection.insert_one(data)
 
     @staticmethod
-    def find_all_games():
+    def find_all_games(user_id):
         collection = db[config['games']]
-        return collection.find().sort('date', -1)
+        return collection.find({"creator.sub": {"$ne": user_id}}).sort('date', -1)
 
     @staticmethod
     def find_games_by_id(game_ids):
         collection = db[config['games']]
-        return collection.find({"_id": {"$in": game_ids}})
+        return collection.find({"_id": {"$in": game_ids}}).sort('date', -1)
 
     @staticmethod
     def find_game_by_id(game_id):
@@ -98,6 +98,11 @@ class DatabaseAPI:
     def find_all_user_games(user_id):
         collection = db[config['user_games']]
         return collection.distinct('game', {'user': user_id})
+
+    @staticmethod
+    def remove_user_game_by_game_id(game_id, user_id):
+        collection = db[config['user_games']]
+        return collection.delete_many({'user': user_id, 'game':ObjectId(game_id)})
 
     @staticmethod
     def __find_the_most_recent_user_game(query):

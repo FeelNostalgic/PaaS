@@ -197,6 +197,10 @@
                     <div class="actions">
                         <button class="submitButton" onclick="window.location.href='/participate/{{ game.id }}'">Participate</button>
                     </div>
+                {%  else %}
+                    <div class="actions">
+                       <button class="submitButton" onclick="window.location.href='/unsubscribe/{{ game.id }}'">Unsubscribed</button>
+                    </div>
                 {% endif %}
             </div>
 
@@ -328,25 +332,7 @@
                     marker.foundImage = "";
                     deleteButton.style.display = "none";
                 }
-
-                function showFeedback(message, duration = 1500, isError = false) {
-                    const feedback = document.getElementById("feedback");
-
-                    feedback.textContent = message;
-
-                    if (isError) {
-                        feedback.classList.add("error");
-                    } else {
-                        feedback.classList.remove("error");
-                    }
-
-                    feedback.classList.add("show");
-
-                    setTimeout(() => {
-                        feedback.classList.remove("show");
-                    }, duration);
-                }
-            </script>
+               </script>
         </div>
     </div>
 {% endblock %}
