@@ -1,0 +1,69 @@
+﻿.game-item {
+    border: 2px solid #ccc;
+    padding: 15px;
+    margin: 15px 0;
+    border-radius: 10px;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    background-color: #f9f9f9;
+    cursor: pointer; /* To indicate that the group is clickable */
+}
+
+.game-item:hover {
+    background-color: #f1f1f1; /* Hover effect for the clickable game item */
+}
+
+.game-info {
+    flex-grow: 1;
+    padding-left: 20px;
+}
+
+.game-info h2 {
+    margin: 0;
+    font-size: 20px;
+    color: #333;
+}
+
+.game-info p {
+    margin: 5px 0;
+    font-size: 14px;
+    color: #555;
+}
+
+.game-info .creator {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.game-info .status {
+    font-size: 16px;
+    font-weight: bold;
+}
+
+.game-info .status.completed {
+    color: red;
+}
+
+.game-info .status.in-progress {
+    color: green;
+}
+
+.game-info .status.in-revision {
+    color: blue;
+}
+
+.game-info .total-caches {
+    font-size: 14px;
+    font-weight: normal;
+}
+
+.map-preview {
+    width: 150px;
+    height: 150px;
+    border-radius: 10px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}

@@ -4,119 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Home Page</title>
-    <style>
-        /* General Styles */
-        body {
-            font-family: Arial, sans-serif;
-            background: linear-gradient(135deg, #4facfe, #00f2fe) fixed;
-            margin: 0;
-            padding: 0;
-            display: flex;
-            justify-content: center;
-            align-items: flex-start;
-            height: 100vh;
-        }
-
-        .header {
-            width: 95%;
-            background-color: #fff;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            position: fixed;
-            top: 0;
-            left: 0;
-            z-index: 1000;
-            border-bottom: 1px solid #e0e0e0;
-            padding: 10px 40px;
-            border-bottom: 1px solid #e0e0e0;
-        }
-
-        .header .left {
-            flex: 1;
-            text-align: left;
-            font-size: 16px;
-            font-weight: bold;
-            color: #333;
-            margin-right: 10px;
-        }
-
-        .header .center {
-            flex: 2;
-            display: flex;
-            justify-content: center;
-            gap: 10px;
-        }
-
-        .header .center .navigation {
-            margin: 0 10px;
-            padding: 8px 16px;
-            font-size: 14px;
-            color: white;
-            background-color: #4facfe;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            transition: background-color 0.3s ease;
-        }
-
-        .header .center .navigation:hover {
-            background-color: #00c6ff;
-        }
-
-        .header .right {
-            flex: 1;
-            text-align: right;
-        }
-
-        .header .right .logout-link {
-            font-size: 14px;
-            color: #dc3545;
-            text-decoration: none;
-            font-weight: bold;
-            transition: color 0.3s ease;
-        }
-
-        .header .right .logout-link:hover {
-            color: #a71d2a;
-        }
-
-        .container {
-            background: #fff;
-            padding: 20px 30px;
-            border-radius: 10px;
-            box-shadow: 0 6px 10px rgba(0, 0, 0, 0.15);
-            max-width: 800px;
-            width: 100%;
-            margin-top: 80px; /* Push the content below the header */
-        }
-
-        h1 {
-            text-align: center;
-            color: #333;
-            margin-bottom: 20px;
-        }
-
-        button {
-            width: 100%;
-            padding: 10px;
-            background-color: #4facfe;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 16px;
-            font-weight: bold;
-            transition: background 0.3s;
-            margin-bottom: 10px;
-        }
-
-        button:hover {
-            background-color: #00c6ff;
-        }
-
-    </style>
+    <link type="text/css" rel="stylesheet" href="{{ url_for('static', filename='css/header.css') }}">
+    <link type="text/css" rel="stylesheet" href="{{ url_for('static', filename='css/body.css') }}">
+    <link type="text/css" rel="stylesheet" href="{{ url_for('static', filename='css/hunts.css') }}">
 </head>
 <body>
 
@@ -140,6 +30,51 @@
 <!-- Main Content -->
 <div class="container">
     <h1>Welcome, {{ session.userinfo.name }}</h1>
+    <div id="games-list">
+        {% for game in games %}
+            <div class="game-item" onclick="window.location.href='/game/{{ game.id }}'">
+                <!-- Mapa a la izquierda -->
+                <div id="map-{{ game.id }}" class="map-preview"></div>
+
+                <!-- Información del juego a la derecha -->
+                <div class="game-info">
+                    <h2>{{ game.name }}</h2>
+
+                    <div class="creator">
+                        <span>{{ game.creator }}</span>
+                        <span>{{ game.date }}</span>
+                    </div>
+
+                    <div class="status {{ game.status | lower | replace(" ", "-") }}">
+                        {{ game.status }}
+                    </div>
+
+                    <div class="total-caches">
+                        Caches: {{ game.markers }}
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
 </div>
+
+ <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            {% for game in games %}
+                var latLngBounds = [
+                    [{{ game.area.lat1 }}, {{ game.area.lon1 }}],
+                    [{{ game.area.lat2 }}, {{ game.area.lon2 }}]
+                ];
+
+                var map = L.map('map-{{ game.id }}').setView([{{ game.area.lat1 }}, {{ game.area.lon1 }}], 13);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                }).addTo(map);
+
+                L.rectangle(latLngBounds, { color: "#ff7800", weight: 1 }).addTo(map);
+            {% endfor %}
+        });
+    </script>
 </body>
 </html>

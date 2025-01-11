@@ -44,6 +44,11 @@ class DatabaseAPI:
         return collection.insert_one(data)
 
     @staticmethod
+    def find_all():
+        collection = db[config['games']]
+        return collection.find()
+
+    @staticmethod
     def find_one(query):
         collection = db[config['games']]
         return collection.find_one(query)

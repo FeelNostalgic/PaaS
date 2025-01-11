@@ -32,7 +32,22 @@ def index():
 @app.route('/home')
 def home():
     if "user" in session:
-        return render_template("mainpage.html", session=session.get("user"))
+        games = DatabaseAPI.find_all()
+        games_list = []
+        for game in games:
+            print(str(game["name"]))
+            game_data = {
+                "id": str(game["_id"]),
+                "name": game["name"],
+                "creator": game["creator"]["name"],
+                "date": game["date"].strftime("%Y-%m-%d"),
+                "status": game["status"],
+                "markers": len(game["markers"]),
+                "area": game["area"],
+            }
+            games_list.append(game_data)
+
+        return render_template("mainpage.html", session=session.get("user"), games=games_list)
     else:
         abort(404)
 

@@ -1,0 +1,31 @@
+﻿.feedback {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    background-color: #e0ffe0;
+    color: #3e8e41;
+    padding: 0;
+    overflow: hidden;
+    height: 0;
+    border-radius: 4px 4px 0 0;
+    text-align: center;
+    font-size: 16px;
+    z-index: 2000;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    transition: height 0.5s ease, padding 0.5s ease;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.feedback.show {
+    height: 60px;
+    padding: 15px;
+}
+
+.feedback.error {
+    background-color: #f8d7da;
+    color: #721c24;
+}
