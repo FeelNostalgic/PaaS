@@ -33,24 +33,22 @@
     <div id="games-list">
         {% for game in games %}
             <div class="game-item" onclick="window.location.href='/game/{{ game.id }}'">
-                <!-- Mapa a la izquierda -->
+                <!-- Map Preview -->
                 <div id="map-{{ game.id }}" class="map-preview"></div>
 
-                <!-- Información del juego a la derecha -->
+                <!-- Game Info -->
                 <div class="game-info">
                     <h2>{{ game.name }}</h2>
-
-                    <div class="creator">
-                        <span>{{ game.creator }}</span>
-                        <span>{{ game.date }}</span>
+                    <div class="game-details">
+                        <p><strong>Creator:</strong> {{ game.creator }} </p>
+                        <p> {{ game.date }}</p>
                     </div>
 
-                    <div class="status {{ game.status | lower | replace(" ", "-") }}">
-                        {{ game.status }}
-                    </div>
-
-                    <div class="total-caches">
-                        Caches: {{ game.markers }}
+                    <div class="game-details">
+                        <div class="game-status {{ game.status | lower | replace(" ", "-") }}">
+                            {{ game.status }}
+                        </div>
+                        <p><strong>Markers:</strong> {{ game.markers }}</p>
                     </div>
                 </div>
             </div>
@@ -58,23 +56,24 @@
     </div>
 </div>
 
- <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            {% for game in games %}
-                var latLngBounds = [
-                    [{{ game.area.lat1 }}, {{ game.area.lon1 }}],
-                    [{{ game.area.lat2 }}, {{ game.area.lon2 }}]
-                ];
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script>
+    // Mostrar los mapas de previsualización para cada juego
+    document.addEventListener('DOMContentLoaded', function () {
+        {% for game in games %}
+            var latLngBounds = [
+                [{{ game.area.lat1 }}, {{ game.area.lon1 }}],
+                [{{ game.area.lat2 }}, {{ game.area.lon2 }}]
+            ];
 
-                var map = L.map('map-{{ game.id }}').setView([{{ game.area.lat1 }}, {{ game.area.lon1 }}], 13);
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                }).addTo(map);
+            var map = L.map('map-{{ game.id }}').setView([{{ game.area.lat1 }}, {{ game.area.lon1 }}], 13);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }).addTo(map);
 
-                L.rectangle(latLngBounds, { color: "#ff7800", weight: 1 }).addTo(map);
-            {% endfor %}
-        });
-    </script>
+            L.rectangle(latLngBounds, {color: "#ff7800", weight: 1}).addTo(map);
+        {% endfor %}
+    });
+</script>
 </body>
 </html>

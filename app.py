@@ -78,6 +78,11 @@ def logout():
     else:
         abort(404)
 
+@app.route('/game/<int:game_id>')
+def game_detail(game_id):
+    # Aquí deberías buscar el juego con el ID proporcionado y mostrar detalles
+    return f"Detalles del juego {game_id}"
+
 @app.route("/new_game")
 def newGame():
     if "user" in session:
