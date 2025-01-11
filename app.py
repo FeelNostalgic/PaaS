@@ -77,6 +77,7 @@ def home():
                 "winner": game.get("winner"),
                 "markers": len(game["markers"]),
                 "area": game["area"],
+                "players": DatabaseAPI.get_num_players_from_game(game["name"])
             }
             games_list.append(game_data)
 
@@ -100,7 +101,8 @@ def game_detail(game_name):
             "winner": game.get("winner"),
             "markers": user_game['markers'] if user_game else game['markers'],
             "area": game["area"],
-            "participating": user_game is not None
+            "participating": user_game is not None,
+            "players": DatabaseAPI.get_num_players_from_game(game["name"])
         }
 
         return render_template("game.html", session=session.get("user"), game=game_data)
@@ -138,6 +140,8 @@ def uploadFoundImage():
             photo = data.get('photo')
             user_game = DatabaseAPI.find_user_game_by_game_name(game_name, user_id)
 
+            # TODO check game status, if is not In Progress => inform user and block game
+
             DatabaseAPI.saveFoundImage(user_game, marker_id, photo)
 
             game = DatabaseAPI.find_game_by_name(game_name)
@@ -163,7 +167,7 @@ def resetGame(game_name):
 @app.route('/view_game/<string:game_name>')
 def editGame(game_name):
     if "user" in session:
-        game = DatabaseAPI.find_game_by_id(game_name)
+        game = DatabaseAPI.find_game_by_name(game_name)
         if session.get("user")["userinfo"]["sub"] == game["creator"]["sub"]:
             for marker in game["markers"]:
                 marker['foundBy'] = []
@@ -184,7 +188,8 @@ def editGame(game_name):
                 "winner": game.get("winner"),
                 "markers": game["markers"],
                 "area": game["area"],
-                "participating": False
+                "participating": False,
+                "players": DatabaseAPI.get_num_players_from_game(game["name"])
             }
             return render_template("SuperviseGame.html", session=session.get("user"), game=game_data)
         else:
@@ -243,6 +248,8 @@ def myHunts():
                 "winner": game.get("winner"),
                 "markers": len(game["markers"]),
                 "area": game["area"],
+                "cachesFound": DatabaseAPI.get_caches_completed_in_game_by_user(game["name"], session.get("user")["userinfo"]["sub"]),
+                "players": DatabaseAPI.get_num_players_from_game(game["name"])
             }
             games_list.append(game_data)
 
@@ -266,6 +273,7 @@ def huntCreations():
                 "winner": game.get("winner"),
                 "markers": len(game["markers"]),
                 "area": game["area"],
+                "players": DatabaseAPI.get_num_players_from_game(game["name"])
             }
             games_list.append(game_data)
 

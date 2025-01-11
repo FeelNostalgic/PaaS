@@ -131,6 +131,23 @@ class DatabaseAPI:
         return DatabaseAPI.__find_the_most_recent_user_game({'game': game_name, 'user': user_sub})
 
     @staticmethod
+    def get_num_players_from_game(game_name):
+        collection = db[config['user_games']]
+        pipeline = [
+            {"$match": {"game": game_name}},
+            {"$sort": {"date": -1}},
+            {
+                "$group": {
+                    "_id": "$user",
+                    "doc": {"$first": "$$ROOT"}
+                }
+            },
+            {"$replaceRoot": {"newRoot": "$doc"}}
+        ]
+        return len(list(collection.aggregate(pipeline)))
+
+
+    @staticmethod
     def saveFoundImage(user_game, marker_id, photo):
         collection = db[config['user_games']]
         markers = user_game['markers']

@@ -140,61 +140,69 @@
                         {% if marker.found %}
                             <div class="marker-item">
                                 <button id="foldout-btn-{{ marker.id }}" class="foldout-btn" onclick="toggleMarkerDetails({{ marker.id }})" style="background:green;">Cache #{{ loop.index }}</button>
-                                <div id="marker-details-{{ marker.id }}" class="marker-details" style="display: none;">
-                                    {% if marker.clueText %}
-                                        <p><strong>Clue Text:</strong> {{ marker.clueText }}</p>
-                                    {% endif %}
-                                    {% if marker.clueImage %}
-                                        <p><strong>Clue Image:</strong></p>
-                                        <img src="{{ marker.clueImage }}" alt="Clue Image">
-                                    {% endif %}
-                                    <div id="uploaded-photo-{{ marker.id }}" class="uploaded-photo">
-                                        <img src="{{ marker.image }}" alt="Found image" style="max-width: 300px; max-height: 300px; margin-top: 10px; display: block;">
+                                {% if not game.winner %}
+                                    <div id="marker-details-{{ marker.id }}" class="marker-details" style="display: none;">
+                                        {% if marker.clueText %}
+                                            <p><strong>Clue Text:</strong> {{ marker.clueText }}</p>
+                                        {% endif %}
+                                        {% if marker.clueImage %}
+                                            <p><strong>Clue Image:</strong></p>
+                                            <img src="{{ marker.clueImage }}" alt="Clue Image">
+                                        {% endif %}
+                                        <div id="uploaded-photo-{{ marker.id }}" class="uploaded-photo">
+                                            <img src="{{ marker.image }}" alt="Found image" style="max-width: 300px; max-height: 300px; margin-top: 10px; display: block;">
+                                        </div>
                                     </div>
-                                </div>
+                                {% endif %}
                             </div>
                         {% else %}
                             <div class="marker-item">
                                 <button id="foldout-btn-{{ marker.id }}" class="foldout-btn" onclick="toggleMarkerDetails({{ marker.id }})">Cache #{{ loop.index }}</button>
-                                <div id="marker-details-{{ marker.id }}" class="marker-details" style="display: none;">
-                                    <div id="post-data-{{ marker.id }}" style="display:none;">
+                                {% if not game.winner %}
+                                    <div id="marker-details-{{ marker.id }}" class="marker-details" style="display: none;">
+                                        <div id="post-data-{{ marker.id }}" style="display:none;">
+                                            {% if marker.clueText %}
+                                                <p><strong>Clue Text:</strong> {{ marker.clueText }}</p>
+                                            {% endif %}
+                                        </div>
                                         {% if marker.clueText %}
-                                            <p><strong>Clue Text:</strong> {{ marker.clueText }}</p>
+                                            <p id="clueText-{{ marker.id }}" style="display: block;"><strong>Clue Text:</strong> {{ marker.clueText }}</p>
+                                        {% endif %}
+                                        {% if marker.clueImage %}
+                                            <p id="clueImage-{{ marker.id }}" style="display: block;"><strong>Clue Image:</strong></p>
+                                            <img src="{{ marker.clueImage }}" alt="Clue Image" style="max-width: 300px; max-height: 300px; margin-top: 10px; display: block;">
+                                        {% endif %}
+                                        {% if game.participating %}
+                                            <p id="label-photo-{{ marker.id }}" style="display: block;"><strong>Upload a photo:</strong></p>
+                                            <input type="file" id="upload-photo-{{ marker.id }}" accept="image/*" onchange="handleImageUpload(event, {{ marker.id }})" style="display: block;">
+                                            <div id="uploaded-photo-{{ marker.id }}" class="uploaded-photo" style="max-width: 300px; max-height: 300px; margin-top: 10px; display: block;"></div>
+
+                                            <button id="delete-photo-btn-{{ marker.id }}" class="delete-photo-btn" onclick="deletePhoto({{ marker.id }})"
+                                                    style="margin-top: 10px; background-color: red; color: white; display: none;">Remove Image
+                                            </button>
+
+                                            <button id="found-btn-{{ marker.id }}" class="found-btn" onclick="markAsFound({{ marker.id }})" style="display: block;">Found</button>
                                         {% endif %}
                                     </div>
-                                    {% if marker.clueText %}
-                                        <p id="clueText-{{ marker.id }}" style="display: block;"><strong>Clue Text:</strong> {{ marker.clueText }}</p>
-                                    {% endif %}
-                                    {% if marker.clueImage %}
-                                        <p id="clueImage-{{ marker.id }}" style="display: block;"><strong>Clue Image:</strong></p>
-                                        <img src="{{ marker.clueImage }}" alt="Clue Image" style="max-width: 300px; max-height: 300px; margin-top: 10px; display: block;">
-                                    {% endif %}
-                                    {% if game.participating %}
-                                        <p id="label-photo-{{ marker.id }}" style="display: block;"><strong>Upload a photo:</strong></p>
-                                        <input type="file" id="upload-photo-{{ marker.id }}" accept="image/*" onchange="handleImageUpload(event, {{ marker.id }})" style="display: block;">
-                                        <div id="uploaded-photo-{{ marker.id }}" class="uploaded-photo" style="max-width: 300px; max-height: 300px; margin-top: 10px; display: block;"></div>
-
-                                        <button id="delete-photo-btn-{{ marker.id }}" class="delete-photo-btn" onclick="deletePhoto({{ marker.id }})"
-                                                style="margin-top: 10px; background-color: red; color: white; display: none;">Remove Image
-                                        </button>
-
-                                        <button id="found-btn-{{ marker.id }}" class="found-btn" onclick="markAsFound({{ marker.id }})" style="display: block;">Found</button>
-                                    {% endif %}
-                                </div>
+                                {% endif %}
                             </div>
                         {% endif %}
                     {% endfor %}
                 </div>
 
-                {% if not game.participating %}
-                    <div class="actions">
-                        <button class="submitButton" onclick="window.location.href='/participate/{{ game.name }}'">Participate</button>
-                    </div>
-                {% else %}
-                    <div class="actions">
-                        <button class="submitButton" onclick="window.location.href='/unsubscribe/{{ game.name }}'">Unsubscribed</button>
-                    </div>
+                {% if not game.winner %}
+                    {% if not game.participating %}
+                        <div class="actions">
+                            <button class="submitButton" onclick="window.location.href='/participate/{{ game.name }}'">Participate</button>
+                        </div>
+                    {% else %}
+                        <div class="actions">
+                            <button class="submitButton" onclick="window.location.href='/unsubscribe/{{ game.name }}'">Unsubscribed</button>
+                        </div>
+                    {% endif %}
                 {% endif %}
+
+
             </div>
 
             <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
@@ -297,7 +305,10 @@
                             deleteButton.style.display = "none";
                             showFeedback(data.message);
                             if (data.refresh) {
-                                location.reload();
+                                showFeedback("YOU ARE THE WINNER!!!. <br>Wait for creator to check your game", true);
+                                setTimeout(() => {
+                                    location.reload();
+                                }, 1500);
                             }
 
                         })
