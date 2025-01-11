@@ -52,7 +52,7 @@ class DatabaseAPI:
         return collection.count_documents({"name": game_name}) == 1
 
     @staticmethod
-    def change_game_status(game, status):
+    def change_game_status(game, winner, status):
         collection = db[config['games']]
         data = {
             'creator': {
@@ -68,6 +68,7 @@ class DatabaseAPI:
             },
             'markers': game['markers'],
             'date': datetime.now(),
+            'winner': winner,
             'status': status
         }
         return collection.insert_one(data)
@@ -79,7 +80,7 @@ class DatabaseAPI:
         for marker in markers:
             marker['found'] = False
         data = {
-            'game': game['_id'],
+            'game': game['name'],
             'user': user_sub,
             'user_name': user_name,
             'date': datetime.now(),
@@ -99,24 +100,35 @@ class DatabaseAPI:
                     "doc": {"$first": "$$ROOT"}
                 }
             },
-            {"$replaceRoot": {"newRoot": "$doc"}},
-            {"$project": {"_id": 1, "name": 1, "creator": 1, "date": 1, "area": 1, "markers": 1, "status":1}} # Ajusta los campos según necesites
+            {"$replaceRoot": {"newRoot": "$doc"}}
         ]
 
         return list(collection.aggregate(pipeline))
 
     @staticmethod
-    def find_games_user_is_subscribed(game_ids):
+    def find_games_user_is_subscribed(game_names):
         collection = db[config['games']]
-        return collection.find({"_id": {"$in": game_ids}}).sort('date', -1)
+        pipeline = [
+            {"$match": {"name": {"$in": game_names}}},
+            {"$sort": {"date": -1}},
+            {
+                "$group": {
+                    "_id": "$name",
+                    "doc": {"$first": "$$ROOT"}
+                }
+            },
+            {"$replaceRoot": {"newRoot": "$doc"}}
+        ]
+
+        return list(collection.aggregate(pipeline))
 
     @staticmethod
-    def find_game_by_id(game_id):
-        return DatabaseAPI.__find_the_most_recent_game({'_id': ObjectId(game_id)})
+    def find_game_by_name(game_name):
+        return DatabaseAPI.__find_the_most_recent_game({'name' : game_name})
 
     @staticmethod
-    def find_user_game_by_game_id(game_id, user_sub):
-        return DatabaseAPI.__find_the_most_recent_user_game({'game': ObjectId(game_id), 'user': user_sub})
+    def find_user_game_by_game_name(game_name, user_sub):
+        return DatabaseAPI.__find_the_most_recent_user_game({'game': game_name, 'user': user_sub})
 
     @staticmethod
     def saveFoundImage(user_game, marker_id, photo):
@@ -136,8 +148,8 @@ class DatabaseAPI:
         return collection.insert_one(data)
 
     @staticmethod
-    def get_caches_completed_in_game_by_user(game_id, user_id):
-        documento = DatabaseAPI.__find_the_most_recent_user_game({'game':ObjectId(game_id), 'user':user_id})
+    def get_caches_completed_in_game_by_user(game_name, user_id):
+        documento = DatabaseAPI.__find_the_most_recent_user_game({'game': game_name, 'user':user_id})
         if documento:
             markers_encontrados = sum(1 for marker in documento.get("markers", []) if marker.get("found"))
             return markers_encontrados
@@ -155,15 +167,15 @@ class DatabaseAPI:
         return collection.distinct('game', {'user': user_id})
 
     @staticmethod
-    def remove_user_game_by_game_id(game_id, user_id):
+    def remove_user_game_by_game_name(game_name, user_id):
         collection = db[config['user_games']]
-        return collection.delete_many({'user': user_id, 'game': ObjectId(game_id)})
+        return collection.delete_many({'user': user_id, 'game': game_name})
 
     @staticmethod
-    def get_user_that_found_cache(game_id, marker_id):
+    def get_user_that_found_cache(game_name, marker_id):
         collection = db[config['user_games']]
         pipeline = [
-            {"$match": {"game": ObjectId(game_id)}},
+            {"$match": {"game": game_name}},
             {"$unwind": "$markers"},
             {
                 "$match": {

@@ -74,6 +74,7 @@ def home():
                 "creator": game["creator"]["name"],
                 "date": game["date"].strftime("%Y-%m-%d"),
                 "status": game["status"],
+                "winner": game.get("winner"),
                 "markers": len(game["markers"]),
                 "area": game["area"],
             }
@@ -84,11 +85,11 @@ def home():
         abort(404)
 
 
-@app.route('/game/<string:game_id>')
-def game_detail(game_id):
+@app.route('/game/<string:game_name>')
+def game_detail(game_name):
     if "user" in session:
-        game = DatabaseAPI.find_game_by_id(game_id)
-        user_game = DatabaseAPI.find_user_game_by_game_id(game_id, session.get("user")["userinfo"]["sub"])
+        game = DatabaseAPI.find_game_by_name(game_name)
+        user_game = DatabaseAPI.find_user_game_by_game_name(game_name, session.get("user")["userinfo"]["sub"])
 
         game_data = {
             "id": str(game["_id"]),
@@ -96,6 +97,7 @@ def game_detail(game_id):
             "creator": game["creator"]["name"],
             "date": game["date"].strftime("%Y-%m-%d"),
             "status": game["status"],
+            "winner": game.get("winner"),
             "markers": user_game['markers'] if user_game else game['markers'],
             "area": game["area"],
             "participating": user_game is not None
@@ -106,21 +108,21 @@ def game_detail(game_id):
         abort(404)
 
 
-@app.route('/participate/<string:game_id>')
-def participate(game_id):
+@app.route('/participate/<string:game_name>')
+def participate(game_name):
     if "user" in session:
-        game = DatabaseAPI.find_game_by_id(game_id)
+        game = DatabaseAPI.find_game_by_name(game_name)
         DatabaseAPI.insert_new_user_game(game, session.get("user")["userinfo"]["sub"], session.get("user")["userinfo"]["given_name"])
-        return redirect(f"/game/{game_id}")
+        return redirect(f"/game/{game_name}")
     else:
         abort(404)
 
 
-@app.route('/unsubscribe/<string:game_id>')
-def unsubscribe(game_id):
+@app.route('/unsubscribe/<string:game_name>')
+def unsubscribe(game_name):
     if "user" in session:
-        DatabaseAPI.remove_user_game_by_game_id(game_id, session.get("user")["userinfo"]["sub"])
-        return redirect(f"/game/{game_id}")
+        DatabaseAPI.remove_user_game_by_game_name(game_name, session.get("user")["userinfo"]["sub"])
+        return redirect(f"/game/{game_name}")
     else:
         abort(404)
 
@@ -130,42 +132,42 @@ def uploadFoundImage():
     if "user" in session:
         if request.method == "POST":
             data = request.get_json()
-            game_id = data.get('gameId')
+            game_name = data.get('game_name')
             user_id = session.get("user")["userinfo"]["sub"]
             marker_id = data.get('markerId')
             photo = data.get('photo')
-            user_game = DatabaseAPI.find_user_game_by_game_id(game_id, user_id)
+            user_game = DatabaseAPI.find_user_game_by_game_name(game_name, user_id)
 
             DatabaseAPI.saveFoundImage(user_game, marker_id, photo)
 
-            game = DatabaseAPI.find_game_by_id(game_id)
-            num_caches_found = DatabaseAPI.get_caches_completed_in_game_by_user(game_id, session.get("user")["userinfo"]["sub"])
+            game = DatabaseAPI.find_game_by_name(game_name)
+            num_caches_found = DatabaseAPI.get_caches_completed_in_game_by_user(game_name, session.get("user")["userinfo"]["sub"])
 
             if len(game['markers']) == num_caches_found:
-                DatabaseAPI.change_game_status(game, 'In Revision')
+                DatabaseAPI.change_game_status(game, user_game['user_name'], 'In Revision')
 
-            return jsonify({'message': 'Image saved successfully!', 'markerId': marker_id})
+            return jsonify({'message': 'Image saved successfully!', 'markerId': marker_id, 'refresh': len(game['markers']) == num_caches_found})
 
 
-@app.route('/delete_game/<int:game_id>')
-def deleteGame(game_id):
+@app.route('/delete_game/<string:game_name>')
+def deleteGame(game_name):
     if "user" in session:
         return render_template("newGame.html", session=session.get("user"))
     else:
         abort(404)
 
-@app.route('/reset_game/<string:game_id>')
-def resetGame(game_id):
+@app.route('/reset_game/<string:game_name>')
+def resetGame(game_name):
     pass
 
-@app.route('/view_game/<string:game_id>')
-def editGame(game_id):
+@app.route('/view_game/<string:game_name>')
+def editGame(game_name):
     if "user" in session:
-        game = DatabaseAPI.find_game_by_id(game_id)
+        game = DatabaseAPI.find_game_by_id(game_name)
         if session.get("user")["userinfo"]["sub"] == game["creator"]["sub"]:
             for marker in game["markers"]:
                 marker['foundBy'] = []
-                users = DatabaseAPI.get_user_that_found_cache(game_id, marker['id'])
+                users = DatabaseAPI.get_user_that_found_cache(game_name, marker['id'])
                 for user in users:
                     marker['foundBy'].append({
                         'user_id': user['user'],
@@ -179,6 +181,7 @@ def editGame(game_id):
                 "creator": game["creator"]["name"],
                 "date": game["date"].strftime("%Y-%m-%d"),
                 "status": game["status"],
+                "winner": game.get("winner"),
                 "markers": game["markers"],
                 "area": game["area"],
                 "participating": False
@@ -237,6 +240,7 @@ def myHunts():
                 "creator": game["creator"]["name"],
                 "date": game["date"].strftime("%Y-%m-%d"),
                 "status": game["status"],
+                "winner": game.get("winner"),
                 "markers": len(game["markers"]),
                 "area": game["area"],
             }
@@ -259,6 +263,7 @@ def huntCreations():
                 "creator": game["creator"]["name"],
                 "date": game["date"].strftime("%Y-%m-%d"),
                 "status": game["status"],
+                "winner": game.get("winner"),
                 "markers": len(game["markers"]),
                 "area": game["area"],
             }

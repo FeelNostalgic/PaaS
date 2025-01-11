@@ -129,6 +129,9 @@
                     <div class="game-status {{ game.status | lower | replace(" ", "-") }}">
                         {{ game.status }}
                     </div>
+                    {% if game.winner %}
+                        <p><span>Winner: </span> <strong>{{ game.winner }}</strong></p>
+                    {% endif %}
                 </div>
 
                 <h3>Caches</h3>
@@ -185,11 +188,11 @@
 
                 {% if not game.participating %}
                     <div class="actions">
-                        <button class="submitButton" onclick="window.location.href='/participate/{{ game.id }}'">Participate</button>
+                        <button class="submitButton" onclick="window.location.href='/participate/{{ game.name }}'">Participate</button>
                     </div>
                 {% else %}
                     <div class="actions">
-                        <button class="submitButton" onclick="window.location.href='/unsubscribe/{{ game.id }}'">Unsubscribed</button>
+                        <button class="submitButton" onclick="window.location.href='/unsubscribe/{{ game.name }}'">Unsubscribed</button>
                     </div>
                 {% endif %}
             </div>
@@ -258,7 +261,7 @@
                     }
 
                     var data = {
-                        gameId: "{{ game.id }}",
+                        game_name: "{{ game.name }}",
                         markerId: markerId,
                         photo: marker.foundImage
                     }
@@ -276,7 +279,7 @@
                             var foldout = document.getElementById(`foldout-btn-${data.markerId}`);
                             foldout.style.background = "green";
                             var clueText = document.getElementById(`clueText-${data.markerId}`);
-                            if(clueText) clueText.style.display = "none";
+                            if (clueText) clueText.style.display = "none";
                             var labelPhoto = document.getElementById(`label-photo-${data.markerId}`);
                             labelPhoto.style.display = "none";
                             var uploadPhoto = document.getElementById(`upload-photo-${data.markerId}`);
@@ -293,6 +296,10 @@
                             const deleteButton = document.getElementById(`delete-photo-btn-${data.markerId}`);
                             deleteButton.style.display = "none";
                             showFeedback(data.message);
+                            if (data.refresh) {
+                                location.reload();
+                            }
+
                         })
                         .catch(error => {
                             console.log(error);
