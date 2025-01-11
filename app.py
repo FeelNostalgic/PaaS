@@ -138,6 +138,12 @@ def uploadFoundImage():
 
             DatabaseAPI.saveFoundImage(user_game, marker_id, photo)
 
+            game = DatabaseAPI.find_game_by_id(game_id)
+            num_caches_found = DatabaseAPI.get_caches_completed_in_game_by_user(game_id, session.get("user")["userinfo"]["sub"])
+
+            if len(game['markers']) == num_caches_found:
+                DatabaseAPI.change_game_status(game, 'In Revision')
+
             return jsonify({'message': 'Image saved successfully!', 'markerId': marker_id})
 
 
@@ -206,13 +212,14 @@ def addGame():
             lon2 = area.get('lon2')
             markers = data.get('markers')
 
-            user = session.get('user')['userinfo']
+            user = session.get('user')['userinfo']['sub']
 
-            # TODO:  check if gamename exist
+            if DatabaseAPI.exist_game_name(game_name):
+                return jsonify({'message': f'The name {game_name} already exists', 'error': True})
 
-            DatabaseAPI.insert_new_game(user['sub'], user['given_name'], game_name, lat1, lon1, lat2, lon2, markers)
+            DatabaseAPI.insert_new_game(user['sub'], user['given_name'], game_name, lat1, lon1, lat2, lon2, markers, 'In progress')
 
-            return jsonify({'message': 'Datos guardados correctamente'})
+            return jsonify({'message': 'Game saved successfully.', 'error': False})
     else:
         abort(404)
 

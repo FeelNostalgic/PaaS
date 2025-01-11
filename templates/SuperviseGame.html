@@ -30,6 +30,7 @@
             background-color: #f9f9f9;
             padding: 20px;
             box-shadow: -2px 0 5px rgba(0, 0, 0, 0.1);
+            overflow-y: auto;
         }
 
         .sidebar .marker-list {
@@ -183,17 +184,29 @@
                     markers.forEach((marker, index) => {
                         var markerItem = document.createElement('div');
                         markerItem.className = 'marker-item';
+                        markerItem.innerHTML = ``;
+
+                        let foundByContent = '';
+                        if (marker.foundBy.length > 0) {
+                            foundByContent = `<p><b>Found by:</b></p>`;
+                            marker.foundBy.forEach(player => {
+                                foundByContent += `
+                                <p>${player.user_name}</p>
+                                <p><b>Player's Image:</b>
+                                <img src="${player.image}" alt="Player Image" style="max-width: 100px;">
+                                </p>
+                                <button onclick="removePlayerAnswer('${player.user_id}')">Remove Player's Answer</button>
+                            `;
+                            });
+                        }
+
                         markerItem.innerHTML = `
                         <p>Marker ${index + 1}: (${marker.lat.toFixed(6)}, ${marker.lng.toFixed(6)})</p>
                         <p><b>Clue Text:</b> ${marker.clueText}</p>
-                        ${marker.clueImage ? `<p><b>Clue Image:</b> <img src="${marker.clueImage}" alt="Clue Image" style="max-width: 300px; max-height: 300px; margin-top: 10px; display: block;"></p>` : ''}
-                        ${marker.foundBy.length>0 ? `<p><b>Found by:</b> </p>` : ''}
-                        ${marker.foundBy.forEach(player => {
-                            `<p>${player.user_name}</p>`
-                            `<p><b>Player's Image:</b> <img src="${player.image}" alt="Player Image" style="max-width: 100px;"></p>`
-                            `<button onclick="removePlayerAnswer(${player.user_id})">Remove Player's Answer</button>`
-                        })
-                        }
+                        ${marker.clueImage ? `<p><b>Clue Image:</b>
+                            <img src="${marker.clueImage}" alt="Clue Image" style="max-width: 300px; max-height: 300px; margin-top: 10px; display: block;">
+                        </p>` : ''}
+                        ${foundByContent}
                         `;
 
                         markerList.appendChild(markerItem);

@@ -26,7 +26,7 @@ class DatabaseAPI:
         pass
 
     @staticmethod
-    def insert_new_game(user_sub, user_name, game_name, lat1, lon1, lat2, lon2, markers):
+    def insert_new_game(user_sub, user_name, game_name, lat1, lon1, lat2, lon2, markers, status):
         collection = db[config['games']]
         data = {
             'creator': {
@@ -42,7 +42,33 @@ class DatabaseAPI:
             },
             'markers': markers,
             'date': datetime.now(),
-            'status': 'In progress'
+            'status': status
+        }
+        return collection.insert_one(data)
+
+    @staticmethod
+    def exist_game_name(game_name):
+        collection = db[config['games']]
+        return collection.count_documents({"name": game_name}) == 1
+
+    @staticmethod
+    def change_game_status(game, status):
+        collection = db[config['games']]
+        data = {
+            'creator': {
+                'sub': game['creator']['sub'],
+                'name': game['creator']['name']
+            },
+            'name': game['name'],
+            'area': {
+                'lat1': game['area']['lat1'],
+                'lon1': game['area']['lon1'],
+                'lat2': game['area']['lat2'],
+                'lon2': game['area']['lon2']
+            },
+            'markers': game['markers'],
+            'date': datetime.now(),
+            'status': status
         }
         return collection.insert_one(data)
 
@@ -64,7 +90,20 @@ class DatabaseAPI:
     @staticmethod
     def find_all_games(user_id):
         collection = db[config['games']]
-        return collection.find({"creator.sub": {"$ne": user_id}}).sort('date', -1)
+        pipeline = [
+            {"$match": {"creator.sub": {"$ne": user_id}}},
+            {"$sort": {"date": -1}},
+            {
+                "$group": {
+                    "_id": "$name",
+                    "doc": {"$first": "$$ROOT"}
+                }
+            },
+            {"$replaceRoot": {"newRoot": "$doc"}},
+            {"$project": {"_id": 1, "name": 1, "creator": 1, "date": 1, "area": 1, "markers": 1, "status":1}} # Ajusta los campos según necesites
+        ]
+
+        return list(collection.aggregate(pipeline))
 
     @staticmethod
     def find_games_user_is_subscribed(game_ids):
@@ -95,6 +134,15 @@ class DatabaseAPI:
             'markers': markers
         }
         return collection.insert_one(data)
+
+    @staticmethod
+    def get_caches_completed_in_game_by_user(game_id, user_id):
+        documento = DatabaseAPI.__find_the_most_recent_user_game({'game':ObjectId(game_id), 'user':user_id})
+        if documento:
+            markers_encontrados = sum(1 for marker in documento.get("markers", []) if marker.get("found"))
+            return markers_encontrados
+        else:
+           return 0
 
     @staticmethod
     def find_all_games_created_by_user(user_id):

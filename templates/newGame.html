@@ -187,10 +187,10 @@
 
                             updateMarkerList();
                         } else {
-                            showFeedback("Marker outside the area", 1500, true);
+                            showFeedback("Marker outside the area", true);
                         }
                     } else {
-                        showFeedback("Area is already created", 1500, true);
+                        showFeedback("Area is already created", true);
                     }
                 } else {
                     var layer = event.layer;
@@ -212,7 +212,7 @@
                         isAreaCreated = true;
 
                     } else {
-                        showFeedback("Please create an area first", 1500, true);
+                        showFeedback("Please create an area first", true);
                     }
                 }
             });
@@ -341,7 +341,7 @@
                 markersToRemove.forEach(marker => {
                     showFeedback(`
                 Markers outside the area will be removed
-                    `, 1500, true);
+                    `, true);
                     marker.layer.setOpacity(0);
                     markers = markers.filter(m => m.id !== marker.id);
                 });
@@ -387,7 +387,7 @@
                         console.log("Error al obtener la ubicación: " + error.message);
                     });
                 } else {
-                    showFeedback("Geolocalización no es soportada por este navegador.", 1500, true);
+                    showFeedback("Geolocalización no es soportada por este navegador.", true);
                 }
             }
 
@@ -405,17 +405,17 @@
                 var gameName = document.getElementById('gameName').value;
 
                 if (!gameName) {
-                    showFeedback("Please enter a game name.", 1500, true);
+                    showFeedback("Please enter a game name.", true);
                     return;
                 }
 
                 if (lat1 === 0 || lon1 === 0 || lat2 === 0 || lon2 === 0) {
-                    showFeedback("Please create an area for the game.", 1500, true);
+                    showFeedback("Please create an area for the game.", true);
                     return;
                 }
 
                 if (markers.length === 0) {
-                    showFeedback("Please add at least one marker.", 1500, true);
+                    showFeedback("Please add at least one marker.", true);
                     return;
                 }
 
@@ -423,7 +423,7 @@
 
                 for (let marker of markers) {
                     if (!marker.clueText && !marker.clueImage) {
-                        showFeedback("Each marker must have at least a clue text or image.", 1500, true);
+                        showFeedback("Each marker must have at least a clue text or image.", true);
                         return;
                     }
                 }
@@ -458,14 +458,19 @@
                 })
                     .then(response => response.json())
                     .then(data => {
-                        showFeedback("Game saved successfully.");
-                        setTimeout(() => {
-                            window.location.href = '/home';
-                        }, 1500);
+                        if (!data.error) {
+                            showFeedback(data.message);
+                            setTimeout(() => {
+                                window.location.href = '/home';
+                            }, 1500);
+                        } else {
+                            showFeedback(data.message, true);
+                        }
+
 
                     })
                     .catch(error => {
-                        showFeedback("Error when sending data", 1500, true);
+                        showFeedback("Error when sending data", true);
                     });
             }
         </script>

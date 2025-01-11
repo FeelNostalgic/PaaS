@@ -253,7 +253,7 @@
 
                     const uploadedPhotoContainer = document.getElementById(`uploaded-photo-${markerId}`);
                     if (uploadedPhotoContainer.innerHTML === "") {
-                        showFeedback("Please upload a photo before marking as found.", 1500, true);
+                        showFeedback("Please upload a photo before marking as found.", true);
                         return;
                     }
 
@@ -292,11 +292,11 @@
 
                             const deleteButton = document.getElementById(`delete-photo-btn-${data.markerId}`);
                             deleteButton.style.display = "none";
-                            showFeedback(data.message, 1500);
+                            showFeedback(data.message);
                         })
                         .catch(error => {
                             console.log(error);
-                            showFeedback("An error occurred while uploading the photo. Please try again.", 1500, true);
+                            showFeedback("An error occurred while uploading the photo. Please try again.", true);
                         });
                 }
 
