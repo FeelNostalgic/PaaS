@@ -1,6 +1,7 @@
 ﻿import os
 from dotenv import load_dotenv
 from pymongo import MongoClient
+from bson import ObjectId
 import configparser
 from datetime import datetime
 
@@ -49,7 +50,11 @@ class DatabaseAPI:
         return collection.find()
 
     @staticmethod
-    def find_one(query):
+    def find_game(game_id):
+        return DatabaseAPI.__find_one({'_id': ObjectId(game_id)})
+
+    @staticmethod
+    def __find_one(query):
         collection = db[config['games']]
         return collection.find_one(query)
 

@@ -22,6 +22,7 @@ oauth.register(
     }
 )
 
+
 @app.route('/')
 def index():
     if "user" not in session:
@@ -29,13 +30,43 @@ def index():
     else:
         return redirect("/home")
 
+
+@app.route('/login')
+def login():
+    if "user" in session:
+        return redirect("/home")
+    else:
+        return oauth.geocaching.authorize_redirect(redirect_uri=url_for('auth_callback', _external=True))
+
+
+@app.route('/auth/callback')
+def auth_callback():
+    if "user" in session:
+        return redirect("/home")
+    try:
+        token = oauth.geocaching.authorize_access_token()
+        session["user"] = token
+        return redirect("/home")
+    except Exception as e:
+        return redirect("/")
+
+
+@app.route("/logout")
+def logout():
+    if "user" in session:
+        session.pop("user", None)
+        session.pop("state", None)
+        return redirect("/")
+    else:
+        abort(404)
+
+
 @app.route('/home')
 def home():
     if "user" in session:
         games = DatabaseAPI.find_all()
         games_list = []
         for game in games:
-            print(str(game["name"]))
             game_data = {
                 "id": str(game["_id"]),
                 "name": game["name"],
@@ -51,37 +82,48 @@ def home():
     else:
         abort(404)
 
-@app.route('/login')
-def login():
-    if "user" in session:
-        return redirect("/home")
-    else:
-        return oauth.geocaching.authorize_redirect(redirect_uri=url_for('auth_callback', _external=True))
 
-@app.route('/auth/callback')
-def auth_callback():
+@app.route('/game/<string:game_id>')
+def game_detail(game_id):
     if "user" in session:
-        return redirect("/home")
-    try:
-        token = oauth.geocaching.authorize_access_token()
-        session["user"] = token
-        return redirect("/home")
-    except Exception as e:
-        return redirect("/")
-
-@app.route("/logout")
-def logout():
-    if "user" in session:
-        session.pop("user", None)
-        session.pop("state", None)
-        return redirect("/")
+        game = DatabaseAPI.find_game(game_id)
+        game_data = {
+            "id": str(game["_id"]),
+            "name": game["name"],
+            "creator": game["creator"]["name"],
+            "date": game["date"].strftime("%Y-%m-%d"),
+            "status": game["status"],
+            "markers": game["markers"],
+            "area": game["area"],
+        }
+        return render_template("game.html", game=game_data, session=session.get("user"))
     else:
         abort(404)
 
-@app.route('/game/<int:game_id>')
-def game_detail(game_id):
-    # Aquí deberías buscar el juego con el ID proporcionado y mostrar detalles
-    return f"Detalles del juego {game_id}"
+
+@app.route('/participate/<string:game_id>')
+def participate(game_id):
+    if "user" in session:
+        return render_template("newGame.html", session=session.get("user"))
+    else:
+        abort(404)
+
+
+@app.route('/delete_game/<int:game_id>')
+def deleteGame(game_id):
+    if "user" in session:
+        return render_template("newGame.html", session=session.get("user"))
+    else:
+        abort(404)
+
+
+@app.route('/edit_game/<int:game_id>')
+def editGame(game_id):
+    if "user" in session:
+        return render_template("newGame.html", session=session.get("user"))
+    else:
+        abort(404)
+
 
 @app.route("/new_game")
 def newGame():
@@ -89,6 +131,7 @@ def newGame():
         return render_template("newGame.html", session=session.get("user"))
     else:
         abort(404)
+
 
 @app.route("/add_game", methods=["POST"])
 def addGame():
@@ -114,6 +157,7 @@ def addGame():
             return jsonify({'message': 'Datos guardados correctamente'})
     else:
         abort(404)
+
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', debug=True)
