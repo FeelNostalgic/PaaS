@@ -57,7 +57,7 @@ class DatabaseAPI:
         result = collection.update_many(
             {'game': game_name},
                  {"$set": {"markers.$[].found": False},
-                        "$unset": {"markers.$[].image": ""}})
+                        "$unset": {"markers.$[].image": "", "markers.$[].date": ""}})
         return result
 
     @staticmethod
@@ -120,7 +120,7 @@ class DatabaseAPI:
         collection.update_many(
             {'game': game_name, 'user': winner_id},
             {"$set": {"markers.$[].found": False},
-                "$unset": {"markers.$[].image": ""}}
+                "$unset": {"markers.$[].image": "", "markers.$[].date": ""}}
         )
         return True
 
@@ -240,7 +240,7 @@ class DatabaseAPI:
         collection = db[config['user_games']]
         result = collection.update_one(
             {"game": user_game["game"], "user": user_game["user"], "markers.id": marker_id},
-            {"$set": {"markers.$[element].found": True, "markers.$[element].image": photo, "date": datetime.now()}},
+            {"$set": {"markers.$[element].found": True, "markers.$[element].image": photo, "markers.$[element].date": datetime.now()}},
             array_filters=[{"element.id": marker_id}]
         )
         return result
@@ -271,7 +271,7 @@ class DatabaseAPI:
             {"game": game_name, "user": user_id, "markers.id": marker_id},
             {
                 "$set": {"markers.$[element].found": False, "date": datetime.now()},
-                "$unset": {"markers.$[element].image": ""}
+                "$unset": {"markers.$[element].image": "", "markers.$[element].date": ""}
             },
             array_filters=[{"element.id": marker_id}]
         )
@@ -297,7 +297,7 @@ class DatabaseAPI:
                 }
             },
             {"$replaceRoot": {"newRoot": "$lastDocument"}},
-            {"$project": {"user": 1, "user_name": 1, "markers.image": 1, "_id": 0}}
+            {"$project": {"user": 1, "user_name": 1, "markers.image": 1, "markers.date":1, "_id": 0}}
         ]
 
         return list(collection.aggregate(pipeline))

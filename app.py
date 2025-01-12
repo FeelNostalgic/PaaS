@@ -236,7 +236,8 @@ def editGame(game_name):
                     marker['foundBy'].append({
                         'user_id': user['user'],
                         'user_name': user['user_name'],
-                        'image': user.get("markers").get("image")
+                        'image': user.get("markers").get("image"),
+                        'date': user.get("markers").get("date").strftime("%Y-%m-%d %H:%M")
                     })
 
             winner = game.get("winner")

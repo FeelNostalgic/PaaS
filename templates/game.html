@@ -38,7 +38,7 @@
                     {% for marker in game.markers %}
                         {% if marker.found %}
                             <div class="marker-item">
-                                <button id="foldout-btn-{{ marker.id }}" class="foldout-btn" onclick="toggleMarkerDetails({{ marker.id }})" style="background:green;">Cache #{{ loop.index }}</button>
+                                <button id="foldout-btn-{{ marker.id }}" class="foldout-btn" onclick="toggleMarkerDetails({{ marker.id }})" style="background:green;">Cache #{{ loop.index }} <div class="date-btn">{{ marker.date.strftime("%Y-%m-%d %H:%M") }}</div> </button>
                                 {% if not game.winner %}
                                     <div id="marker-details-{{ marker.id }}" class="marker-details" style="display: none;">
                                         {% if marker.clueText %}

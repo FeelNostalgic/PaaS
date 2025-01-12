@@ -65,7 +65,10 @@
                                     <div>
                                         <p><b>Found by:</b></p>
                                         {% for player in  marker.foundBy %}
-                                            <p>{{ player.user_name }}</p>
+                                            <div>
+                                                <span>{{ player.user_name }}</span>
+                                                <span style="font-size: smaller; float: right;">{{ player.date }}</span>
+                                            </div>
                                             <p><span><img src="{{ player.image }}" alt="Player Image" style="max-width: 100px;"></span>
                                                 {% if game.status != "Completed" %}
                                                     <span><button id="delete-player-btn" class="delete-btn" onclick="removePlayerAnswer('{{ player.user_id }}',{{ marker.id }})">Remove Player's Answer</button></span>
