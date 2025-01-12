@@ -5,6 +5,8 @@ from bson import ObjectId
 import configparser
 from datetime import datetime
 
+from backend.statusEnum import Status
+
 load_dotenv()
 MONGODB_URI = os.environ['MONGODB_URI']
 client = MongoClient(MONGODB_URI)
@@ -22,9 +24,6 @@ db = client[config['database']]
 
 
 class DatabaseAPI:
-    def __init__(self):
-        pass
-
     @staticmethod
     def insert_new_game(user_sub, user_name, game_name, lat1, lon1, lat2, lon2, markers, status):
         collection = db[config['games']]
@@ -47,53 +46,56 @@ class DatabaseAPI:
         return collection.insert_one(data)
 
     @staticmethod
+    def reset_game(game_name):
+        collection = db[config['games']]
+        result = collection.update_one(
+            {"name": game_name},
+            {"$set": {"status": Status.IN_PROGRESS.value, "date": datetime.now()},
+                    "$unset": {"winner": ""}})
+
+        collection = db[config['user_games']]
+        result = collection.update_many(
+            {'game': game_name},
+                 {"$set": {"markers.$[].found": False},
+                        "$unset": {"markers.$[].image": ""}})
+        return result
+
+    @staticmethod
+    def delete_game(game_name):
+        collection = db[config['games']]
+        collection.delete_one({"name": game_name})
+        collection = db[config['user_games']]
+        collection.delete_many({"game": game_name})
+        return True
+
+    @staticmethod
     def exist_game_name(game_name):
         collection = db[config['games']]
         return collection.count_documents({"name": game_name}) == 1
 
     @staticmethod
-    def change_game_status(game, winner, status):
+    def set_game_winner(game, winner_name, winner_id, status):
         collection = db[config['games']]
-        data = {
-            'creator': {
-                'sub': game['creator']['sub'],
-                'name': game['creator']['name']
-            },
-            'name': game['name'],
-            'area': {
-                'lat1': game['area']['lat1'],
-                'lon1': game['area']['lon1'],
-                'lat2': game['area']['lat2'],
-                'lon2': game['area']['lon2']
-            },
-            'markers': game['markers'],
-            'date': datetime.now(),
-            'winner': winner,
-            'status': status
-        }
-        return collection.insert_one(data)
+        result = collection.update_one(
+            {"name": game["name"]},
+            {"$set": {"winner.name": winner_name, "winner.id": winner_id,"status": status}}
+        )
+        return result
 
     @staticmethod
     def complete_game(game):
         collection = db[config['games']]
-        data = {
-            'creator': {
-                'sub': game['creator']['sub'],
-                'name': game['creator']['name']
-            },
-            'name': game['name'],
-            'area': {
-                'lat1': game['area']['lat1'],
-                'lon1': game['area']['lon1'],
-                'lat2': game['area']['lat2'],
-                'lon2': game['area']['lon2']
-            },
-            'markers': game['markers'],
-            'date': datetime.now(),
-            'winner': game['winner'],
-            'status': "Completed"
-        }
-        return collection.insert_one(data)
+        result = collection.update_one(
+            {"game": game["name"]},
+            {"$set": {"status": Status.COMPLETED.value}}
+        )
+        return result
+
+    @staticmethod
+    def get_game_status(game_name):
+        collection = db[config['games']]
+        query = {"name": game_name}
+        return collection.find_one(query).get("status")
 
     @staticmethod
     def insert_new_user_game(game, user_sub, user_name):
@@ -113,85 +115,46 @@ class DatabaseAPI:
     @staticmethod
     def find_all_games(user_id):
         collection = db[config['games']]
-        pipeline = [
-            {"$match": {"creator.sub": {"$ne": user_id}}},
-            {"$sort": {"date": -1}},
-            {
-                "$group": {
-                    "_id": "$name",
-                    "doc": {"$first": "$$ROOT"}
-                }
-            },
-            {"$replaceRoot": {"newRoot": "$doc"}}
-        ]
-
-        return list(collection.aggregate(pipeline))
+        query = {"creator.sub": {"$ne": user_id}}
+        return collection.find(query).sort('date', -1)
 
     @staticmethod
     def find_games_user_is_subscribed(game_names):
         collection = db[config['games']]
-        pipeline = [
-            {"$match": {"name": {"$in": game_names}}},
-            {"$sort": {"date": -1}},
-            {
-                "$group": {
-                    "_id": "$name",
-                    "doc": {"$first": "$$ROOT"}
-                }
-            },
-            {"$replaceRoot": {"newRoot": "$doc"}}
-        ]
-
-        return list(collection.aggregate(pipeline))
+        query = {"name": {"$in": game_names}}
+        return collection.find(query).sort('date', -1)
 
     @staticmethod
     def find_game_by_name(game_name):
-        return DatabaseAPI.__find_the_most_recent_game({'name': game_name})
+        return DatabaseAPI.__find_one_game({'name': game_name})
 
     @staticmethod
     def find_user_game_by_game_name(game_name, user_sub):
-        return DatabaseAPI.__find_the_most_recent_user_game({'game': game_name, 'user': user_sub})
+        return DatabaseAPI.__find_one_user_game({'game': game_name, 'user': user_sub})
 
     @staticmethod
     def get_num_players_from_game(game_name):
         collection = db[config['user_games']]
-        pipeline = [
-            {"$match": {"game": game_name}},
-            {"$sort": {"date": -1}},
-            {
-                "$group": {
-                    "_id": "$user",
-                    "doc": {"$first": "$$ROOT"}
-                }
-            },
-            {"$replaceRoot": {"newRoot": "$doc"}}
-        ]
-        return len(list(collection.aggregate(pipeline)))
+        query = {"game": game_name}
+        return len(list(collection.find(query)))
 
     @staticmethod
-    def get_winner_data(game_name, winner):
-        return DatabaseAPI.__find_the_most_recent_user_game({"game": game_name, "user_name": winner})
+    def get_winner_data(game_name, winner_name):
+        return DatabaseAPI.__find_one_user_game({"game": game_name, "user_name": winner_name})
 
     @staticmethod
     def saveFoundImage(user_game, marker_id, photo):
         collection = db[config['user_games']]
-        markers = user_game['markers']
-        marker = next((m for m in markers if m['id'] == marker_id), None)
-        marker['found'] = True
-        marker['image'] = photo
-
-        data = {
-            'game': user_game['game'],
-            'user': user_game['user'],
-            'user_name': user_game['user_name'],
-            'date': datetime.now(),
-            'markers': markers
-        }
-        return collection.insert_one(data)
+        result = collection.update_one(
+            {"game": user_game["game"], "user": user_game["user"], "markers.id": marker_id},
+            {"$set": {"markers.$[element].found": True, "markers.$[element].image": photo, "date": datetime.now()}},
+            array_filters=[{"element.id": marker_id}]
+        )
+        return result
 
     @staticmethod
     def get_caches_completed_in_game_by_user(game_name, user_id):
-        documento = DatabaseAPI.__find_the_most_recent_user_game({'game': game_name, 'user': user_id})
+        documento = DatabaseAPI.__find_one_user_game({'game': game_name, 'user': user_id})
         if documento:
             markers_encontrados = sum(1 for marker in documento.get("markers", []) if marker.get("found"))
             return markers_encontrados
@@ -201,18 +164,8 @@ class DatabaseAPI:
     @staticmethod
     def find_all_games_created_by_user(user_id):
         collection = db[config['games']]
-        pipeline = [
-            {"$match": {"creator.sub": user_id}},
-            {"$sort": {"date": -1}},
-            {
-                "$group": {
-                    "_id": "$name",
-                    "doc": {"$first": "$$ROOT"}
-                }
-            },
-            {"$replaceRoot": {"newRoot": "$doc"}}
-        ]
-        return list(collection.aggregate(pipeline))
+        query = {"creator.sub": user_id}
+        return collection.find(query).sort('date', -1)
 
     @staticmethod
     def find_all_user_games(user_id):
@@ -225,7 +178,20 @@ class DatabaseAPI:
         return collection.delete_many({'user': user_id, 'game': game_name})
 
     @staticmethod
-    def get_user_that_found_cache(game_name, marker_id):
+    def remove_user_image_from_game(game_name, user_id, marker_id):
+        collection = db[config['user_games']]
+        result = collection.update_one(
+            {"game": game_name, "user": user_id, "markers.id": marker_id},
+            {
+                "$set": {"markers.$[element].found": False, "date": datetime.now()},
+                "$unset": {"markers.$[].image": ""}
+            },
+            array_filters=[{"element.id": marker_id}]
+        )
+        return result
+
+    @staticmethod
+    def get_users_that_found_caches(game_name, marker_id):
         collection = db[config['user_games']]
         pipeline = [
             {"$match": {"game": game_name}},
@@ -250,17 +216,27 @@ class DatabaseAPI:
         return list(collection.aggregate(pipeline))
 
     @staticmethod
-    def __find_the_most_recent_user_game(query):
+    def __find_one_user_game(query):
         collection = db[config['user_games']]
-        try:
-            return collection.find(query).sort('date', -1).limit(1).next()
-        except StopIteration:
-            return None
+        return collection.find_one(query)
 
     @staticmethod
-    def __find_the_most_recent_game(query):
+    def __find_one_game(query):
         collection = db[config['games']]
-        try:
-            return collection.find(query).sort('date', -1).limit(1).next()
-        except StopIteration:
-            return None
+        return collection.find_one(query)
+
+    # @staticmethod
+    # def __find_the_most_recent_user_game(query):
+    #     collection = db[config['user_games']]
+    #     try:
+    #         return collection.find(query).sort('date', -1).limit(1).next()
+    #     except StopIteration:
+    #         return None
+    #
+    # @staticmethod
+    # def __find_the_most_recent_game(query):
+    #     collection = db[config['games']]
+    #     try:
+    #         return collection.find(query).sort('date', -1).limit(1).next()
+    #     except StopIteration:
+    #         return None

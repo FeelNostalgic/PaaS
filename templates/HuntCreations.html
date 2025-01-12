@@ -40,8 +40,7 @@
                         <h2>{{ game.name }}</h2>
                         <div class="game-details">
                             <div class="game-details-row">
-                                <span><strong>Creador:</strong> {{ game.creator }}</span>
-                                <span style="font-size: smaller;">{{ game.date }}</span>
+                                <span style="margin-top: 3px; font-size: smaller;">{{ game.date }}</span>
                             </div>
                             <div class="game-details-row">
                                 <div class="game-status {{ game.status | lower | replace(" ", "-") }}">

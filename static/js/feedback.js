@@ -1,7 +1,7 @@
 ﻿function showFeedback(message, isError = false, duration = 1500) {
     const feedback = document.getElementById("feedback");
 
-    feedback.textContent = message;
+    feedback.innerHTML = message;
 
     if (isError) {
         feedback.classList.add("error");

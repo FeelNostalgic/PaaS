@@ -5,7 +5,7 @@ from flask import Flask, abort, redirect, render_template, session, url_for, req
 from dotenv import load_dotenv
 import os
 from backend.database import DatabaseAPI
-import requests
+from backend.statusEnum import Status
 
 load_dotenv()
 
@@ -92,6 +92,8 @@ def game_detail(game_name):
         game = DatabaseAPI.find_game_by_name(game_name)
         user_game = DatabaseAPI.find_user_game_by_game_name(game_name, session.get("user")["userinfo"]["sub"])
 
+        caches = DatabaseAPI.get_caches_completed_in_game_by_user(game["name"], session.get("user")["userinfo"]["sub"])
+
         game_data = {
             "id": str(game["_id"]),
             "name": game["name"],
@@ -102,7 +104,8 @@ def game_detail(game_name):
             "markers": user_game['markers'] if user_game else game['markers'],
             "area": game["area"],
             "participating": user_game is not None,
-            "players": DatabaseAPI.get_num_players_from_game(game["name"])
+            "players": DatabaseAPI.get_num_players_from_game(game["name"]),
+            "cachesFound": caches,
         }
 
         return render_template("game.html", session=session.get("user"), game=game_data)
@@ -114,6 +117,11 @@ def game_detail(game_name):
 def participate(game_name):
     if "user" in session:
         game = DatabaseAPI.find_game_by_name(game_name)
+
+        status = DatabaseAPI.get_game_status(game_name)
+        if status != Status.IN_PROGRESS.value:
+            return redirect(f"/game/{game_name}")
+
         DatabaseAPI.insert_new_user_game(game, session.get("user")["userinfo"]["sub"], session.get("user")["userinfo"]["given_name"])
         return redirect(f"/game/{game_name}")
     else:
@@ -124,6 +132,11 @@ def participate(game_name):
 def unsubscribe(game_name):
     if "user" in session:
         DatabaseAPI.remove_user_game_by_game_name(game_name, session.get("user")["userinfo"]["sub"])
+
+        status = DatabaseAPI.get_game_status(game_name)
+        if status != Status.IN_PROGRESS.value:
+            return redirect(f"/game/{game_name}")
+
         return redirect(f"/game/{game_name}")
     else:
         abort(404)
@@ -140,7 +153,10 @@ def uploadFoundImage():
             photo = data.get('photo')
             user_game = DatabaseAPI.find_user_game_by_game_name(game_name, user_id)
 
-            # TODO check game status, if is not In Progress => inform user and block game
+            status = DatabaseAPI.get_game_status(game_name)
+
+            if status != Status.IN_PROGRESS.value:
+                return jsonify({'message': 'There is already a winner', 'winner': True})
 
             DatabaseAPI.saveFoundImage(user_game, marker_id, photo)
 
@@ -148,21 +164,35 @@ def uploadFoundImage():
             num_caches_found = DatabaseAPI.get_caches_completed_in_game_by_user(game_name, session.get("user")["userinfo"]["sub"])
 
             if len(game['markers']) == num_caches_found:
-                DatabaseAPI.change_game_status(game, user_game['user_name'], 'In Revision')
+                DatabaseAPI.set_game_winner(game, user_game['user_name'], user_game['user'], Status.IN_REVISION.value)
 
-            return jsonify({'message': 'Image saved successfully!', 'markerId': marker_id, 'refresh': len(game['markers']) == num_caches_found})
+            return jsonify({'message': 'Image saved successfully!', 'markerId': marker_id, 'winner':False, 'refresh': len(game['markers']) == num_caches_found})
 
 
 @app.route('/delete_game/<string:game_name>')
 def deleteGame(game_name):
     if "user" in session:
-        return render_template("newGame.html", session=session.get("user"))
+        game = DatabaseAPI.find_game_by_name(game_name)
+        if session.get("user")["userinfo"]["sub"] == game["creator"]["sub"]:
+            DatabaseAPI.delete_game(game_name)
+            return redirect("/huntCreations")
+        else:
+            abort(404)
     else:
         abort(404)
 
 @app.route('/reset_game/<string:game_name>')
 def resetGame(game_name):
-    pass
+    if "user" in session:
+        game = DatabaseAPI.find_game_by_name(game_name)
+        if session.get("user")["userinfo"]["sub"] == game["creator"]["sub"]:
+            DatabaseAPI.reset_game(game_name)
+            return redirect(f"/view_game/{game_name}")
+        else:
+            abort(404)
+    else:
+        abort(404)
+
 
 @app.route('/view_game/<string:game_name>')
 def editGame(game_name):
@@ -171,21 +201,23 @@ def editGame(game_name):
         if session.get("user")["userinfo"]["sub"] == game["creator"]["sub"]:
             for marker in game["markers"]:
                 marker['foundBy'] = []
-                users = DatabaseAPI.get_user_that_found_cache(game_name, marker['id'])
+                users = DatabaseAPI.get_users_that_found_caches(game_name, marker['id'])
                 for user in users:
                     marker['foundBy'].append({
                         'user_id': user['user'],
                         'user_name': user['user_name'],
-                        'image' : user['markers']['image']
+                        'image' : user.get("markers").get("image")
+
                     })
 
+            winner = game.get("winner")
             game_data = {
                 "id": str(game["_id"]),
                 "name": game["name"],
                 "date": game["date"].strftime("%Y-%m-%d"),
                 "status": game["status"],
-                "winner": game.get("winner"),
-                "winnerMarkers": DatabaseAPI.get_winner_data(game["name"], game.get("winner")).get("markers"),
+                "winner": winner.get("name"),
+                "winnerMarkers": DatabaseAPI.get_winner_data(game["name"], winner.get("name")).get("markers") if winner else None,
                 "markers": game["markers"],
                 "area": game["area"],
                 "players": DatabaseAPI.get_num_players_from_game(game["name"])
@@ -203,6 +235,32 @@ def validateGame():
             data = request.get_json()
             game_name = data.get('game_name')
             DatabaseAPI.complete_game(DatabaseAPI.find_game_by_name(game_name))
+            return redirect(f"/view_game/{game_name}")
+    else:
+        abort(404)
+
+@app.route("/remove_player_image", methods=["POST"])
+def removePlayerImage():
+    if "user" in session:
+        if request.method == "POST":
+            data = request.get_json()
+            game_name = data.get('game_name')
+            user_id = data.get('playerId')
+            marker_id = data.get('markerId')
+            DatabaseAPI.remove_user_image_from_game(game_name, user_id, marker_id)
+            return redirect(f"/view_game/{game_name}")
+    else:
+        abort(404)
+
+@app.route("/remove_user_image", methods=["POST"])
+def removeUserImage():
+    if "user" in session:
+        if request.method == "POST":
+            data = request.get_json()
+            game_name = data.get('game_name')
+            user_id = session.get("user")["userinfo"]["sub"]
+            marker_id = data.get('markerId')
+            DatabaseAPI.remove_user_image_from_game(game_name, user_id, marker_id)
             return redirect(f"/view_game/{game_name}")
     else:
         abort(404)
@@ -229,12 +287,12 @@ def addGame():
             lon2 = area.get('lon2')
             markers = data.get('markers')
 
-            user = session.get('user')['userinfo']['sub']
+            user = session.get('user')['userinfo']
 
             if DatabaseAPI.exist_game_name(game_name):
                 return jsonify({'message': f'The name {game_name} already exists', 'error': True})
 
-            DatabaseAPI.insert_new_game(user['sub'], user['given_name'], game_name, lat1, lon1, lat2, lon2, markers, 'In progress')
+            DatabaseAPI.insert_new_game(user['sub'], user['given_name'], game_name, lat1, lon1, lat2, lon2, markers, Status.IN_PROGRESS.value)
 
             return jsonify({'message': 'Game saved successfully.', 'error': False})
     else:

@@ -26,6 +26,12 @@
                         <p><span>Winner: </span> <strong>{{ game.winner }}</strong></p>
                     {% endif %}
                 </div>
+                <div class="game-details-row">
+                    <span><strong>Players:</strong> {{ game.players }}</span>
+                    {% if game.participating %}
+                        <span><strong>Caches found:</strong> {{ game.cachesFound }}</span>
+                    {% endif %}
+                </div>
 
                 <h3>Caches</h3>
                 <div class="marker-list">
@@ -42,6 +48,13 @@
                                             <p><strong>Clue Image:</strong></p>
                                             <img src="{{ marker.clueImage }}" alt="Clue Image">
                                         {% endif %}
+                                        <div id="uploaded-photo-{{ marker.id }}" class="uploaded-photo">
+                                            <img src="{{ marker.image }}" alt="Found image" style="max-width: 300px; max-height: 300px; margin-top: 10px; display: block;">
+                                            <button id="delete-photo-btn-{{ marker.id }}" class="delete-btn" onclick="removePhoto({{ marker.id }})">Remove Image</button>
+                                        </div>
+                                    </div>
+                                {% else %}
+                                    <div id="marker-details-{{ marker.id }}" class="marker-details" style="display: none;">
                                         <div id="uploaded-photo-{{ marker.id }}" class="uploaded-photo">
                                             <img src="{{ marker.image }}" alt="Found image" style="max-width: 300px; max-height: 300px; margin-top: 10px; display: block;">
                                         </div>
@@ -69,9 +82,7 @@
                                             <p id="label-photo-{{ marker.id }}" style="display: block;"><strong>Upload a photo:</strong></p>
                                             <input type="file" id="upload-photo-{{ marker.id }}" accept="image/*" onchange="handleImageUpload(event, {{ marker.id }})" style="display: block;">
                                             <div id="uploaded-photo-{{ marker.id }}" class="uploaded-photo" style="max-width: 300px; max-height: 300px; margin-top: 10px; display: block;"></div>
-
                                             <button id="delete-photo-btn-{{ marker.id }}" class="delete-btn" onclick="deletePhoto({{ marker.id }})" style="display:none;">Remove Image</button>
-
                                             <button id="found-btn-{{ marker.id }}" class="found-btn" onclick="markAsFound({{ marker.id }})" style="display: block;">Found</button>
                                         {% endif %}
                                     </div>
@@ -80,25 +91,25 @@
                         {% endif %}
                     {% endfor %}
                 </div>
-
-                {% if not game.winner %}
-                    {% if not game.participating %}
-                        <div class="actions">
-                            <button class="submitButton" onclick="window.location.href='/participate/{{ game.name }}'">Participate</button>
-                        </div>
-                    {% else %}
-                        <div class="actions">
-                            <button class="submitButton" onclick="window.location.href='/unsubscribe/{{ game.name }}'">Unsubscribed</button>
-                        </div>
-                    {% endif %}
-                {% endif %}
-
-
             </div>
 
+            {% if not game.winner %}
+                {% if not game.participating %}
+                    <div class="actions">
+                        <button class="submitButton" onclick="window.location.href='/participate/{{ game.name }}'">Participate</button>
+                    </div>
+                {% else %}
+                    <div class="actions">
+                        <button class="submitButton" onclick="leaveGame()">Unsubscribed</button>
+                    </div>
+                {% endif %}
+            {% endif %}
+
             <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+            <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
             <script>
                 var map = L.map('map'); //Empty map
+                var gameData = {{ game | tojson }};
 
                 var markers = [
                     {% for marker in game.markers %}
@@ -131,12 +142,38 @@
                         if (marker.found === "True") {
                             L.marker([marker.lat, marker.lng]).addTo(map)
                                 .bindPopup(`Cache #${(markers.indexOf(marker) + 1)} found!`)
-                                .openPopup();
                         }
                     });
                 }
 
                 window.onload = initMap;
+
+                function leaveGame() {
+                    Swal.fire({
+                        title: 'Are you sure to leave game',
+                        text: "You will lost all your progress. You won't be able to revert this!",
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonColor: '#3085d6',
+                        cancelButtonColor: '#d33',
+                        confirmButtonText: 'Yes, confirm it!'
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            fetch('/unsubscribe/' + gameData.name, {
+                                method: 'GET'
+                            });
+                            Swal.fire(
+                                'Successfully left game',
+                                '',
+                                'success'
+                            ).then(result => {
+                                if (result.isConfirmed) {
+                                    location.reload();
+                                }
+                            });
+                        }
+                    });
+                }
 
                 function toggleMarkerDetails(markerId) {
                     var details = document.getElementById("marker-details-" + markerId);
@@ -172,35 +209,41 @@
                         body: JSON.stringify(data)
                     }).then(response => response.json())
                         .then(data => {
-                            var foundButton = document.getElementById(`found-btn-${data.markerId}`);
-                            foundButton.style.display = "none";
-                            var foldout = document.getElementById(`foldout-btn-${data.markerId}`);
-                            foldout.style.background = "green";
-                            var clueText = document.getElementById(`clueText-${data.markerId}`);
-                            if (clueText) clueText.style.display = "none";
-                            var labelPhoto = document.getElementById(`label-photo-${data.markerId}`);
-                            labelPhoto.style.display = "none";
-                            var uploadPhoto = document.getElementById(`upload-photo-${data.markerId}`);
-                            uploadPhoto.style.display = "none";
-                            var box = document.getElementById(`marker-details-${data.markerId}`);
-                            box.style.display = "none";
-                            var postData = document.getElementById(`post-data-${data.markerId}`);
-                            postData.style.display = "block";
+                            if (data.winner) {
+                                showFeedback(data.message, true);
+                                setTimeout(() => {
+                                    location.reload();
+                                }, 1500);
+                            } else {
+                                var foundButton = document.getElementById(`found-btn-${data.markerId}`);
+                                foundButton.style.display = "none";
+                                var foldout = document.getElementById(`foldout-btn-${data.markerId}`);
+                                foldout.style.background = "green";
+                                var clueText = document.getElementById(`clueText-${data.markerId}`);
+                                if (clueText) clueText.style.display = "none";
+                                var labelPhoto = document.getElementById(`label-photo-${data.markerId}`);
+                                labelPhoto.style.display = "none";
+                                var uploadPhoto = document.getElementById(`upload-photo-${data.markerId}`);
+                                uploadPhoto.style.display = "none";
+                                var box = document.getElementById(`marker-details-${data.markerId}`);
+                                box.style.display = "none";
+                                var postData = document.getElementById(`post-data-${data.markerId}`);
+                                postData.style.display = "block";
 
-                            L.marker([marker.lat, marker.lng]).addTo(map)
-                                .bindPopup(`Cache #${(markers.indexOf(marker) + 1)} found!`)
-                                .openPopup();
+                                L.marker([marker.lat, marker.lng]).addTo(map)
+                                    .bindPopup(`Cache #${(markers.indexOf(marker) + 1)} found!`)
+                                    .openPopup();
 
-                            const deleteButton = document.getElementById(`delete-photo-btn-${data.markerId}`);
-                            deleteButton.style.display = "none";
-                            showFeedback(data.message);
-                            if (data.refresh) {
-                                showFeedback("YOU ARE THE WINNER!!!. <br>Wait for creator to check your game", true);
+                                const deleteButton = document.getElementById(`delete-photo-btn-${data.markerId}`);
+                                deleteButton.style.display = "none";
+                                showFeedback(data.message);
+                                if (data.refresh) {
+                                    showFeedback("YOU ARE THE WINNER!!!. <br>Wait for creator to check your game");
+                                }
                                 setTimeout(() => {
                                     location.reload();
                                 }, 1500);
                             }
-
                         })
                         .catch(error => {
                             console.log(error);
@@ -241,6 +284,38 @@
                     fileInput.value = "";
                     marker.foundImage = "";
                     deleteButton.style.display = "none";
+                }
+
+                function removePhoto(markerId) {
+                    Swal.fire({
+                        title: 'Are you sure to remove image?',
+                        text: "You won't be able to revert this!",
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonColor: '#3085d6',
+                        cancelButtonColor: '#d33',
+                        confirmButtonText: 'Yes, remove it!'
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            fetch('/remove_user_image', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify({markerId: markerId, game_name: gameData.name})
+                            });
+                            Swal.fire(
+                                'Successfully removed image',
+                                '',
+                                'success'
+                            ).then(result => {
+                                if (result.isConfirmed) {
+                                    location.reload();
+                                }
+                            });
+                        }
+                    });
+
                 }
             </script>
         </div>
