@@ -182,13 +182,12 @@ def editGame(game_name):
             game_data = {
                 "id": str(game["_id"]),
                 "name": game["name"],
-                "creator": game["creator"]["name"],
                 "date": game["date"].strftime("%Y-%m-%d"),
                 "status": game["status"],
                 "winner": game.get("winner"),
+                "winnerMarkers": DatabaseAPI.get_winner_data(game["name"], game.get("winner")).get("markers"),
                 "markers": game["markers"],
                 "area": game["area"],
-                "participating": False,
                 "players": DatabaseAPI.get_num_players_from_game(game["name"])
             }
             return render_template("SuperviseGame.html", session=session.get("user"), game=game_data)
@@ -197,6 +196,16 @@ def editGame(game_name):
     else:
         abort(404)
 
+@app.route('/validate_winner', methods=['POST'])
+def validateGame():
+    if "user" in session:
+        if request.method == "POST":
+            data = request.get_json()
+            game_name = data.get('game_name')
+            DatabaseAPI.complete_game(DatabaseAPI.find_game_by_name(game_name))
+            return redirect(f"/view_game/{game_name}")
+    else:
+        abort(404)
 
 @app.route("/newGame")
 def newGame():

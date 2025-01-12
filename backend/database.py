@@ -74,6 +74,28 @@ class DatabaseAPI:
         return collection.insert_one(data)
 
     @staticmethod
+    def complete_game(game):
+        collection = db[config['games']]
+        data = {
+            'creator': {
+                'sub': game['creator']['sub'],
+                'name': game['creator']['name']
+            },
+            'name': game['name'],
+            'area': {
+                'lat1': game['area']['lat1'],
+                'lon1': game['area']['lon1'],
+                'lat2': game['area']['lat2'],
+                'lon2': game['area']['lon2']
+            },
+            'markers': game['markers'],
+            'date': datetime.now(),
+            'winner': game['winner'],
+            'status': "Completed"
+        }
+        return collection.insert_one(data)
+
+    @staticmethod
     def insert_new_user_game(game, user_sub, user_name):
         collection = db[config['user_games']]
         markers = game['markers']
@@ -124,7 +146,7 @@ class DatabaseAPI:
 
     @staticmethod
     def find_game_by_name(game_name):
-        return DatabaseAPI.__find_the_most_recent_game({'name' : game_name})
+        return DatabaseAPI.__find_the_most_recent_game({'name': game_name})
 
     @staticmethod
     def find_user_game_by_game_name(game_name, user_sub):
@@ -146,6 +168,9 @@ class DatabaseAPI:
         ]
         return len(list(collection.aggregate(pipeline)))
 
+    @staticmethod
+    def get_winner_data(game_name, winner):
+        return DatabaseAPI.__find_the_most_recent_user_game({"game": game_name, "user_name": winner})
 
     @staticmethod
     def saveFoundImage(user_game, marker_id, photo):
@@ -166,12 +191,12 @@ class DatabaseAPI:
 
     @staticmethod
     def get_caches_completed_in_game_by_user(game_name, user_id):
-        documento = DatabaseAPI.__find_the_most_recent_user_game({'game': game_name, 'user':user_id})
+        documento = DatabaseAPI.__find_the_most_recent_user_game({'game': game_name, 'user': user_id})
         if documento:
             markers_encontrados = sum(1 for marker in documento.get("markers", []) if marker.get("found"))
             return markers_encontrados
         else:
-           return 0
+            return 0
 
     @staticmethod
     def find_all_games_created_by_user(user_id):
@@ -219,7 +244,7 @@ class DatabaseAPI:
                 }
             },
             {"$replaceRoot": {"newRoot": "$lastDocument"}},
-            {"$project": {"user":1, "user_name": 1, "markers.image":1, "_id": 0}}
+            {"$project": {"user": 1, "user_name": 1, "markers.image": 1, "_id": 0}}
         ]
 
         return list(collection.aggregate(pipeline))

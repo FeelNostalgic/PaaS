@@ -2,101 +2,8 @@
 {% block head %}
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link type="text/css" rel="stylesheet" href="{{ url_for('static', filename='css/game.css') }}">
     <title>Supervise game {{ game.name }}</title>
-    <style>
-        .container {
-            background: #fff;
-            padding: 20px 30px;
-            border-radius: 10px;
-            box-shadow: 0 6px 10px rgba(0, 0, 0, 0.15);
-            max-width: 1500px;
-            width: 100%;
-            height: 80%;
-            margin-top: 80px;
-            display: flex;
-            flex: 1;
-        }
-
-        #map {
-            width: 50%;
-            height: 100%;
-        }
-
-        .sidebar {
-            width: 50%;
-            height: 96%;
-            display: flex;
-            flex-direction: column;
-            background-color: #f9f9f9;
-            padding: 20px;
-            box-shadow: -2px 0 5px rgba(0, 0, 0, 0.1);
-            overflow-y: auto;
-        }
-
-        .sidebar .marker-list {
-            flex: 1;
-            overflow-y: auto;
-            margin-top: 20px;
-        }
-
-        .sidebar .marker-item {
-            padding: 10px;
-            border-bottom: 1px solid #ddd;
-        }
-
-        .sidebar .marker-item input,
-        .sidebar .marker-item textarea {
-            width: calc(100% - 20px);
-            margin-bottom: 10px;
-        }
-
-        .sidebar .marker-item img {
-            max-width: 50%;
-            margin-bottom: 10px;
-        }
-
-        .sidebar .actions {
-            text-align: right;
-            margin-top: 20px;
-        }
-
-        .sidebar .actions button {
-            padding: 10px 20px;
-            font-size: 16px;
-            cursor: pointer;
-            background-color: #4facfe;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            transition: background 0.3s;
-        }
-
-        .sidebar .actions button:hover {
-            background-color: #00c6ff;
-        }
-
-        .actions button {
-            width: 100%;
-            padding: 10px;
-            background-color: #4facfe;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 16px;
-            font-weight: bold;
-            transition: background 0.3s;
-            margin-bottom: 10px;
-        }
-
-        .delete-btn {
-            margin-top: 10px;
-            background-color: red;
-            color: white;
-            display: block;
-        }
-
-    </style>
 {% endblock %}
 {% block body %}
     <!-- Main Content -->
@@ -120,162 +27,178 @@
                     {% endif %}
                 </div>
 
-                <div class="marker-list" id="markerList"></div>
-            </div>
-                <div class="actions">
-                    <button onclick="resetGame()">Reset Game</button>
-                    {% if game.winner %}
-                    <button onclick="checkWinner()">Check Winner</button>
-                    {% endif %}
+                {% if game.winner %}
+                    <div class="winner-details">
+                        <button id="foldout-btn-winner" class="foldout-btn" onclick="toggleWinnerDetails()">WINNER</button>
+                        <div id="winner-markers-details" class="marker-details" style="display: none;">
+                            {% for marker in game.winnerMarkers %}
+                                <p>Cache #{{ loop.index }}</p>
+                                <p><img src="{{ marker.image }}" alt="Player Image" style="max-width: 100px;"></p>
+                            {% endfor %}
+                            {% if game.status == "In Revision" %}
+                                <div class="actions">
+                                    <button class="submitButton" onclick="validateWinner()">Validate Winner</button>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endif %}
+
+                <div class="marker-list" id="markerList">
+                    {% for marker in game.markers %}
+                        <div class="marker-item">
+                            <button id="foldout-btn-{{ marker.id }}" class="foldout-btn" onclick="toggleMarkerDetails({{ marker.id }})">Cache #{{ loop.index }}</button>
+                            <div id="marker-details-{{ marker.id }}" class="marker-details" style="display: none;">
+                                {% if marker.clueText %}
+                                    <p id="clueText-{{ marker.id }}" style="display: block;"><strong>Clue Text:</strong> {{ marker.clueText }}</p>
+                                {% endif %}
+                                {% if marker.clueImage %}
+                                    <p id="clueImage-{{ marker.id }}" style="display: block;"><strong>Clue Image:</strong></p>
+                                    <img src="{{ marker.clueImage }}" alt="Clue Image" style="max-width: 300px; max-height: 300px; margin-top: 10px; display: block;">
+                                {% endif %}
+                                {% if marker.foundBy %}
+                                    <div>
+                                        <p><b>Found by:</b></p>
+                                        {% for player in  marker.foundBy %}
+                                            <p>{{ player.user_name }}</p>
+                                            <p><span><img src="{{ player.image }}" alt="Player Image" style="max-width: 100px;"></span>
+                                                {% if game.status == "In Revision" %}
+                                                    <span><button id="delete-player-btn" class="delete-btn" onclick="removePlayerAnswer({{ player.user_id }},{{ marker.id }})">Remove Player's Answer</button></span>
+                                                {% endif %}
+                                            </p>
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% endfor %}
                 </div>
             </div>
+            <div class="actions">
+                <button class="submitButton" onclick="resetGame()">Reset Game</button>
+            </div>
+        </div>
 
 
-            <!-- Incluir Leaflet JS -->
-            <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
-            <!-- Incluir Leaflet Draw JS -->
-            <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+        <!-- Incluir Leaflet JS -->
+        <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-            <script>
-                var map = L.map('map'); //Empty map
-                var markers = {{game.markers | tojson}};
+        <script>
+            var map = L.map('map'); //Empty map
+            var gameData = {{ game | tojson }};
+            var markers = {{game.markers | tojson}};
 
-                console.log(markers);
+            console.log(markers);
 
-                window.onload = initializeGame;
+            window.onload = initializeMap;
 
-                function initializeGame() {
-                    var latLngBounds = [
-                        [{{ game.area.lat1 }}, {{ game.area.lon1 }}],
-                        [{{ game.area.lat2 }}, {{ game.area.lon2 }}]
-                    ];
+            function initializeMap() {
+                var latLngBounds = [
+                    [{{ game.area.lat1 }}, {{ game.area.lon1 }}],
+                    [{{ game.area.lat2 }}, {{ game.area.lon2 }}]
+                ];
 
-                    var lat = ({{ game.area.lat1 }} + {{ game.area.lat2 }}) / 2;
-                    var lon = ({{ game.area.lon1 }} + {{ game.area.lon2 }}) / 2;
-                    map.setView([lat, lon], 13);
-                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                    }).addTo(map);
+                var lat = ({{ game.area.lat1 }} + {{ game.area.lat2 }}) / 2;
+                var lon = ({{ game.area.lon1 }} + {{ game.area.lon2 }}) / 2;
+                map.setView([lat, lon], 13);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                }).addTo(map);
 
-                    L.rectangle(latLngBounds).addTo(map);
-                    map.fitBounds(latLngBounds);
+                L.rectangle(latLngBounds).addTo(map);
+                map.fitBounds(latLngBounds);
 
-                    loadMarkers();
-                }
+                loadMarkers();
+            }
 
-                function loadMarkers() {
-                    var markerList = document.getElementById('markerList');
-                    markerList.innerHTML = '';
-
-                    markers.forEach((marker,index) => {
-                        var content = `
-                        <p><b>ID:</b> ${index+1}</p>
+            function loadMarkers() {
+                markers.forEach((marker, index) => {
+                    var content = `
+                        <p><b>ID:</b> ${index + 1}</p>
                         <p><b>Position:</b> (${marker.lat.toFixed(6)}, ${marker.lng.toFixed(6)})</p>
                         <p><b>Clue Text:</b> ${marker.clueText || 'None'}</p>
                         ${marker.clueImage ? `<img src="${marker.clueImage}" alt="Clue Image" style="max-width: 200px;">` : ''}`;
 
-                        L.marker([marker.lat, marker.lng]).addTo(map)
-                            .bindPopup(content);
-                    });
+                    L.marker([marker.lat, marker.lng]).addTo(map)
+                        .bindPopup(content);
+                });
+            }
 
-                    markers.forEach((marker, index) => {
-                        var markerItem = document.createElement('div');
-                        markerItem.className = 'marker-item';
-                        markerItem.innerHTML = ``;
+            function toggleMarkerDetails(markerId) {
+                var details = document.getElementById("marker-details-" + markerId);
+                details.style.display = details.style.display === "none" ? "block" : "none";
+            }
 
-                        let foundByContent = '';
-                        if (marker.foundBy.length > 0) {
-                            foundByContent = `<p><b>Found by:</b></p>`;
-                            marker.foundBy.forEach(player => {
-                                foundByContent += `
-                                <p>${player.user_name}</p>
-                                <p><b>Player's Image:</b></p>
-                                <p><span><img src="${player.image}" alt="Player Image" style="max-width: 100px;"></span>
-                                <span><button id="delete-player-btn" class="delete-btn" onclick="removePlayerAnswer('${player.user_id}', '${marker.id}')">Remove Player's Answer</button></span></p>
-                            `;
-                            });
-                        }
+            function toggleWinnerDetails() {
+                var details = document.getElementById("winner-markers-details");
+                details.style.display = details.style.display === "none" ? "block" : "none";
+            }
 
-                        markerItem.innerHTML = `
-                        <p>Marker ${index + 1}: (${marker.lat.toFixed(6)}, ${marker.lng.toFixed(6)})</p>
-                        <p><b>Clue Text:</b> ${marker.clueText}</p>
-                        ${marker.clueImage ? `<p><b>Clue Image:</b>
-                            <img src="${marker.clueImage}" alt="Clue Image" style="max-width: 300px; max-height: 300px; margin-top: 10px; display: block;">
-                        </p>` : ''}
-                        ${foundByContent}
-                        `;
-
-                        markerList.appendChild(markerItem);
-                    });
-                }
-
-                function resetGame() {
-                    fetch('/reset_game', {method: 'POST'})
-                        .then(response => response.json())
-                        .then(() => {
-                            gameData.markers.forEach(marker => {
-                                marker.foundBy = null;
-                                marker.playerImage = null;
-                            });
-                            loadMarkers();
-                        })
-                        .catch(error => {
-                            console.error("Error al reiniciar el juego", error);
+            function resetGame() {
+                fetch('/reset_game', {method: 'POST'})
+                    .then(response => response.json())
+                    .then(() => {
+                        gameData.markers.forEach(marker => {
+                            marker.foundBy = null;
+                            marker.playerImage = null;
                         });
-                }
-
-                function checkWinner() {
-                    var winner = null;
-                    game.players.forEach(player => {
-                        if (player.foundAllCaches) {
-                            winner = player;
-                        }
+                        loadMarkers();
+                    })
+                    .catch(error => {
+                        console.error("Error al reiniciar el juego", error);
                     });
+            }
 
-                    if (winner) {
-                        // Mostrar el mensaje que se ha encontrado un posible ganador
-                        alert(`Possible winner: ${winner.name}. Do you accept this player as the winner?`);
-                        // Aquí se puede incluir lógica para cambiar el estado del juego
-                        changeGameStatus('In revision');
-                    } else {
-                        alert('No winner found yet');
+
+            function validateWinner() {
+                Swal.fire({
+                    title: 'Are you sure to confirm the winner?',
+                    text: "You won't be able to revert this!",
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#3085d6',
+                    cancelButtonColor: '#d33',
+                    confirmButtonText: 'Yes, confirm it!'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        Swal.fire(
+                            'Game completed!',
+                            'The winner has been confirmed.',
+                            'success'
+                        );
+                        fetch('/validate_winner', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({game_name: gameData.name})
+                        }).then(response => response.json())
+                            .then(() =>{
+                                location.reload();
+                                location.href = `/view_game/${gamedata.name}`;
+                            });
                     }
-                }
+                });
+            }
 
-                function changeGameStatus(status) {
-                    fetch('/update_game_status', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({gameId: gameData.id, status: status})
+            function removePlayerAnswer(playerId, markerId) {
+                fetch('/remove_player_answer', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({playerId: playerId, markerId: markerId})
+                })
+                    .then(response => response.json())
+                    .then(() => {
+                        alert('Player answer removed');
+                        loadMarkers();
                     })
-                        .then(response => response.json())
-                        .then(() => {
-                            alert(`Game status updated to: ${status}`);
-                        })
-                        .catch(error => {
-                            console.error("Error al actualizar el estado del juego", error);
-                        });
-                }
-
-                function removePlayerAnswer(playerId, markerId) {
-                    fetch('/remove_player_answer', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({markerId: markerId})
-                    })
-                        .then(response => response.json())
-                        .then(() => {
-                            alert('Player answer removed');
-                            loadMarkers();
-                        })
-                        .catch(error => {
-                            console.error("Error al eliminar la respuesta del jugador", error);
-                        });
-                }
-            </script>
-        </div>
+                    .catch(error => {
+                        console.error("Error al eliminar la respuesta del jugador", error);
+                    });
+            }
+        </script>
+    </div>
 {% endblock %}
