@@ -1,11 +1,16 @@
-﻿FROM python:3.10-slim
+ARG PYTHON_VERSION=3.8.10
 
-WORKDIR /app
+FROM python:${PYTHON_VERSION}-slim
 
-COPY . /app
+LABEL fly_launch_runtime="flask"
 
-RUN pip install --no-cache-dir -r requirements.txt
+WORKDIR /code
+
+COPY requirements.txt requirements.txt
+RUN pip3 install -r requirements.txt
+
+COPY . .
 
 EXPOSE 8080
 
-CMD ["gunicorn", "-b", "0.0.0.0:8080", "app:app"]
+CMD [ "python3", "-m" , "flask", "run", "--host=0.0.0.0", "--port=8080"]

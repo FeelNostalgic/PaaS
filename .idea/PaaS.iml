@@ -12,6 +12,7 @@
     <orderEntry type="library" name="platform" level="application" />
     <orderEntry type="library" name="leaflet" level="application" />
     <orderEntry type="library" name="leaflet.draw" level="application" />
+    <orderEntry type="library" name="sweetalert2" level="application" />
   </component>
   <component name="TemplatesService">
     <option name="TEMPLATE_CONFIGURATION" value="Jinja2" />

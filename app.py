@@ -1,11 +1,14 @@
-﻿import json
-
-from authlib.integrations.flask_client import OAuth
+﻿from authlib.integrations.flask_client import OAuth
 from flask import Flask, abort, redirect, render_template, session, url_for, request, flash, jsonify
 from dotenv import load_dotenv
 import os
 from backend.database import DatabaseAPI
 from backend.statusEnum import Status
+import sys
+
+sys.stdout.reconfigure(line_buffering=True)
+sys.stderr.reconfigure(line_buffering=True)
+
 
 load_dotenv()
 
@@ -37,7 +40,9 @@ def login():
     if "user" in session:
         return redirect("/home")
     else:
-        return oauth.geocaching.authorize_redirect(redirect_uri=url_for('auth_callback', _external=True))
+        uri = url_for('auth_callback', _external=True)
+        print(uri)
+        return oauth.geocaching.authorize_redirect(redirect_uri=uri)
 
 
 @app.route('/auth/callback')
@@ -49,6 +54,7 @@ def auth_callback():
         session["user"] = token
         return redirect("/home")
     except Exception as e:
+        print(e)
         return redirect("/")
 
 
@@ -393,5 +399,4 @@ def huntCreations():
 
 
 if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 8080))
-    app.run(host="0.0.0.0", port=port)
+    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 8080)), debug=True)
