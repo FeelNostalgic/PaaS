@@ -176,7 +176,18 @@ class DatabaseAPI:
     @staticmethod
     def find_all_games_created_by_user(user_id):
         collection = db[config['games']]
-        return collection.find({"creator.sub": user_id}).sort('date', -1)
+        pipeline = [
+            {"$match": {"creator.sub": user_id}},
+            {"$sort": {"date": -1}},
+            {
+                "$group": {
+                    "_id": "$name",
+                    "doc": {"$first": "$$ROOT"}
+                }
+            },
+            {"$replaceRoot": {"newRoot": "$doc"}}
+        ]
+        return list(collection.aggregate(pipeline))
 
     @staticmethod
     def find_all_user_games(user_id):

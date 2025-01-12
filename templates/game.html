@@ -110,6 +110,13 @@
             overflow: hidden;
             background-color: #f1f1f1;
         }
+
+        .delete-btn {
+            margin-top: 10px;
+            background-color: red;
+            color: white;
+            display: none;
+        }
     </style>
 {% endblock %}
 
@@ -177,9 +184,7 @@
                                             <input type="file" id="upload-photo-{{ marker.id }}" accept="image/*" onchange="handleImageUpload(event, {{ marker.id }})" style="display: block;">
                                             <div id="uploaded-photo-{{ marker.id }}" class="uploaded-photo" style="max-width: 300px; max-height: 300px; margin-top: 10px; display: block;"></div>
 
-                                            <button id="delete-photo-btn-{{ marker.id }}" class="delete-photo-btn" onclick="deletePhoto({{ marker.id }})"
-                                                    style="margin-top: 10px; background-color: red; color: white; display: none;">Remove Image
-                                            </button>
+                                            <button id="delete-photo-btn-{{ marker.id }}" class="delete-btn" onclick="deletePhoto({{ marker.id }})">Remove Image</button>
 
                                             <button id="found-btn-{{ marker.id }}" class="found-btn" onclick="markAsFound({{ marker.id }})" style="display: block;">Found</button>
                                         {% endif %}
