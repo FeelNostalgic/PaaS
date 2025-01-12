@@ -118,6 +118,10 @@ def participate(game_name):
     if "user" in session:
         game = DatabaseAPI.find_game_by_name(game_name)
 
+        # TODO: check if game was not delete by creator
+        if not game:
+            redirect("/home")
+
         status = DatabaseAPI.get_game_status(game_name)
         if status != Status.IN_PROGRESS.value:
             return redirect(f"/game/{game_name}")
@@ -132,6 +136,8 @@ def participate(game_name):
 def unsubscribe(game_name):
     if "user" in session:
         DatabaseAPI.remove_user_game_by_game_name(game_name, session.get("user")["userinfo"]["sub"])
+
+        # TODO: check if game was not delete by creator
 
         status = DatabaseAPI.get_game_status(game_name)
         if status != Status.IN_PROGRESS.value:
@@ -153,6 +159,8 @@ def uploadFoundImage():
             photo = data.get('photo')
             user_game = DatabaseAPI.find_user_game_by_game_name(game_name, user_id)
 
+            # TODO: check if game was not delete by creator
+
             status = DatabaseAPI.get_game_status(game_name)
 
             if status != Status.IN_PROGRESS.value:
@@ -166,7 +174,24 @@ def uploadFoundImage():
             if len(game['markers']) == num_caches_found:
                 DatabaseAPI.set_game_winner(game, user_game['user_name'], user_game['user'], Status.IN_REVISION.value)
 
-            return jsonify({'message': 'Image saved successfully!', 'markerId': marker_id, 'winner':False, 'refresh': len(game['markers']) == num_caches_found})
+            return jsonify({'message': 'Image saved successfully!', 'markerId': marker_id, 'winner': False, 'refresh': len(game['markers']) == num_caches_found})
+
+
+@app.route("/remove_user_image", methods=["POST"])
+def removeUserImage():
+    if "user" in session:
+        if request.method == "POST":
+            data = request.get_json()
+            game_name = data.get('game_name')
+            user_id = session.get("user")["userinfo"]["sub"]
+            marker_id = data.get('markerId')
+
+            # TODO: check if game was not delete by creator
+
+            DatabaseAPI.remove_user_image_from_game(game_name, user_id, marker_id)
+            return redirect(f"/view_game/{game_name}")
+    else:
+        abort(404)
 
 
 @app.route('/delete_game/<string:game_name>')
@@ -181,6 +206,7 @@ def deleteGame(game_name):
     else:
         abort(404)
 
+
 @app.route('/reset_game/<string:game_name>')
 def resetGame(game_name):
     if "user" in session:
@@ -193,12 +219,11 @@ def resetGame(game_name):
     else:
         abort(404)
 
-
 @app.route('/view_game/<string:game_name>')
 def editGame(game_name):
     if "user" in session:
         game = DatabaseAPI.find_game_by_name(game_name)
-        if session.get("user")["userinfo"]["sub"] == game["creator"]["sub"]:
+        if session.get("user")["userinfo"]["sub"] == game.get("creator").get("sub"):
             for marker in game["markers"]:
                 marker['foundBy'] = []
                 users = DatabaseAPI.get_users_that_found_caches(game_name, marker['id'])
@@ -206,8 +231,7 @@ def editGame(game_name):
                     marker['foundBy'].append({
                         'user_id': user['user'],
                         'user_name': user['user_name'],
-                        'image' : user.get("markers").get("image")
-
+                        'image': user.get("markers").get("image")
                     })
 
             winner = game.get("winner")
@@ -216,7 +240,7 @@ def editGame(game_name):
                 "name": game["name"],
                 "date": game["date"].strftime("%Y-%m-%d"),
                 "status": game["status"],
-                "winner": winner.get("name"),
+                "winner": winner,
                 "winnerMarkers": DatabaseAPI.get_winner_data(game["name"], winner.get("name")).get("markers") if winner else None,
                 "markers": game["markers"],
                 "area": game["area"],
@@ -228,16 +252,34 @@ def editGame(game_name):
     else:
         abort(404)
 
+
+@app.route('/clear_winner/<string:game_name>')
+def clearWinner(game_name):
+    if "user" in session:
+        game = DatabaseAPI.find_game_by_name(game_name)
+        if session.get("user")["userinfo"]["sub"] == game["creator"]["sub"]:
+            DatabaseAPI.clear_winner(game_name, game["winner"]["id"])
+            return redirect(f"/view_game/{game_name}")
+        else:
+            abort(404)
+    else:
+        abort(404)
+
 @app.route('/validate_winner', methods=['POST'])
 def validateGame():
     if "user" in session:
         if request.method == "POST":
             data = request.get_json()
             game_name = data.get('game_name')
-            DatabaseAPI.complete_game(DatabaseAPI.find_game_by_name(game_name))
-            return redirect(f"/view_game/{game_name}")
+            game = DatabaseAPI.find_game_by_name(game_name)
+            if session.get("user")["userinfo"]["sub"] == game["creator"]["sub"]:
+                DatabaseAPI.complete_game(game["name"])
+                return redirect(f"/view_game/{game_name}")
+            else:
+                abort(404)
     else:
         abort(404)
+
 
 @app.route("/remove_player_image", methods=["POST"])
 def removePlayerImage():
@@ -245,25 +287,20 @@ def removePlayerImage():
         if request.method == "POST":
             data = request.get_json()
             game_name = data.get('game_name')
-            user_id = data.get('playerId')
-            marker_id = data.get('markerId')
-            DatabaseAPI.remove_user_image_from_game(game_name, user_id, marker_id)
-            return redirect(f"/view_game/{game_name}")
+            game = DatabaseAPI.find_game_by_name(game_name)
+            if session.get("user")["userinfo"]["sub"] == game.get("creator").get("sub"):
+                user_id = data.get('playerId')
+                if game.get("winner").get("id") == user_id:
+                    DatabaseAPI.set_game_in_progress(game_name)
+
+                marker_id = data.get('markerId')
+                DatabaseAPI.remove_user_image_from_game(game_name, user_id, marker_id)
+                return redirect(f"/view_game/{game_name}")
+            else:
+                abort(404)
     else:
         abort(404)
 
-@app.route("/remove_user_image", methods=["POST"])
-def removeUserImage():
-    if "user" in session:
-        if request.method == "POST":
-            data = request.get_json()
-            game_name = data.get('game_name')
-            user_id = session.get("user")["userinfo"]["sub"]
-            marker_id = data.get('markerId')
-            DatabaseAPI.remove_user_image_from_game(game_name, user_id, marker_id)
-            return redirect(f"/view_game/{game_name}")
-    else:
-        abort(404)
 
 @app.route("/newGame")
 def newGame():

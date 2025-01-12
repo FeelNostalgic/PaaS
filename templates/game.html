@@ -23,7 +23,7 @@
                         {{ game.status }}
                     </div>
                     {% if game.winner %}
-                        <p><span>Winner: </span> <strong>{{ game.winner }}</strong></p>
+                        <p><span>Winner: </span> <strong>{{ game.winner.name }}</strong></p>
                     {% endif %}
                 </div>
                 <div class="game-details-row">
@@ -215,6 +215,7 @@
                                     location.reload();
                                 }, 1500);
                             } else {
+                                /*
                                 var foundButton = document.getElementById(`found-btn-${data.markerId}`);
                                 foundButton.style.display = "none";
                                 var foldout = document.getElementById(`foldout-btn-${data.markerId}`);
@@ -229,13 +230,14 @@
                                 box.style.display = "none";
                                 var postData = document.getElementById(`post-data-${data.markerId}`);
                                 postData.style.display = "block";
-
+                                 */
                                 L.marker([marker.lat, marker.lng]).addTo(map)
                                     .bindPopup(`Cache #${(markers.indexOf(marker) + 1)} found!`)
                                     .openPopup();
 
                                 const deleteButton = document.getElementById(`delete-photo-btn-${data.markerId}`);
                                 deleteButton.style.display = "none";
+
                                 showFeedback(data.message);
                                 if (data.refresh) {
                                     showFeedback("YOU ARE THE WINNER!!!. <br>Wait for creator to check your game");

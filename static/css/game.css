@@ -52,6 +52,7 @@
     margin-top: auto;
     display: flex;
     text-align: right;
+    flex-direction: column;
 }
 
 .sidebar .actions button {

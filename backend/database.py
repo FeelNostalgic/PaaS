@@ -74,6 +74,20 @@ class DatabaseAPI:
         return collection.count_documents({"name": game_name}) == 1
 
     @staticmethod
+    def set_game_in_progress(game_name):
+        """
+        Set game to In progress and remove winner (not all his answers)
+        :param game_name:
+        :return:
+        """
+        collection = db[config['games']]
+        result = collection.update_one(
+            {"name": game_name},
+            {"$set": {"status": Status.IN_PROGRESS.value}
+                   ,"$unset": {"winner": ""}})
+        return result
+
+    @staticmethod
     def set_game_winner(game, winner_name, winner_id, status):
         collection = db[config['games']]
         result = collection.update_one(
@@ -83,13 +97,28 @@ class DatabaseAPI:
         return result
 
     @staticmethod
-    def complete_game(game):
+    def complete_game(game_name):
         collection = db[config['games']]
         result = collection.update_one(
-            {"game": game["name"]},
+            {"name": game_name},
             {"$set": {"status": Status.COMPLETED.value}}
         )
         return result
+
+    @staticmethod
+    def clear_winner(game_name, winner_id):
+        collection = db[config['games']]
+        collection.update_one(
+            {"name": game_name},
+            {"$set": {"status": Status.IN_PROGRESS.value}
+                   ,"$unset": {"winner": ""}})
+        collection = db[config['user_games']]
+        collection.update_many(
+            {'game': game_name, 'user': winner_id},
+            {"$set": {"markers.$[].found": False},
+                "$unset": {"markers.$[].image": ""}}
+        )
+        return True
 
     @staticmethod
     def get_game_status(game_name):
@@ -184,7 +213,7 @@ class DatabaseAPI:
             {"game": game_name, "user": user_id, "markers.id": marker_id},
             {
                 "$set": {"markers.$[element].found": False, "date": datetime.now()},
-                "$unset": {"markers.$[].image": ""}
+                "$unset": {"markers.$[element].image": ""}
             },
             array_filters=[{"element.id": marker_id}]
         )
@@ -224,19 +253,3 @@ class DatabaseAPI:
     def __find_one_game(query):
         collection = db[config['games']]
         return collection.find_one(query)
-
-    # @staticmethod
-    # def __find_the_most_recent_user_game(query):
-    #     collection = db[config['user_games']]
-    #     try:
-    #         return collection.find(query).sort('date', -1).limit(1).next()
-    #     except StopIteration:
-    #         return None
-    #
-    # @staticmethod
-    # def __find_the_most_recent_game(query):
-    #     collection = db[config['games']]
-    #     try:
-    #         return collection.find(query).sort('date', -1).limit(1).next()
-    #     except StopIteration:
-    #         return None
