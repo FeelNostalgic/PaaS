@@ -21,7 +21,7 @@ config = {
 }
 
 db = client[config['database']]
-
+orden_status = ["In progress", "In revision", "Completed"]
 
 class DatabaseAPI:
     @staticmethod
@@ -147,9 +147,13 @@ class DatabaseAPI:
 
     @staticmethod
     def find_all_games(user_id):
+        """
+        Get all games that the user dont create
+        Ordered by status and date
+        :param user_id:
+        :return:
+        """
         collection = db[config['games']]
-
-        orden_status = ["In progress", "In revision", "Completed"] #orden personalizado
 
         pipeline = [
             {"$match": {"creator.sub": {"$ne": user_id}}},
@@ -165,14 +169,53 @@ class DatabaseAPI:
         result = list(collection.aggregate(pipeline))
         return result
 
-        query = {"creator.sub": {"$ne": user_id}}
-        return collection.find(query).sort('date', -1)
-
     @staticmethod
     def find_games_user_is_subscribed(game_names):
+        """
+        Get all games that the user is subscribed in
+        Ordered by status and date
+        :param game_names:
+        :return:
+        """
         collection = db[config['games']]
-        query = {"name": {"$in": game_names}}
-        return collection.find(query).sort('date', -1)
+
+        pipeline = [
+            {"$match": {"name": {"$in": game_names}}},
+            {
+              "$addFields": {
+                "status_order": { "$indexOfArray": [ orden_status, "$status" ] }
+              }
+            },
+            {"$sort": {"status_order": 1, "date": -1}},
+            {"$project": {"status_order": 0}}
+        ]
+
+        result = list(collection.aggregate(pipeline))
+        return result
+
+    @staticmethod
+    def find_all_games_created_by_user(user_id):
+        """
+        Get all games that the user had created
+        Ordered by status and date
+        :param user_id:
+        :return:
+        """
+        collection = db[config['games']]
+
+        pipeline = [
+            {"$match": {"creator.sub": user_id}},
+            {
+                "$addFields": {
+                    "status_order": {"$indexOfArray": [orden_status, "$status"]}
+                }
+            },
+            {"$sort": {"status_order": 1, "date": -1}},
+            {"$project": {"status_order": 0}}
+        ]
+
+        result = list(collection.aggregate(pipeline))
+        return result
 
     @staticmethod
     def find_game_by_name(game_name):
@@ -210,12 +253,6 @@ class DatabaseAPI:
             return markers_encontrados
         else:
             return 0
-
-    @staticmethod
-    def find_all_games_created_by_user(user_id):
-        collection = db[config['games']]
-        query = {"creator.sub": user_id}
-        return collection.find(query).sort('date', -1)
 
     @staticmethod
     def find_all_user_games(user_id):
