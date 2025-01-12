@@ -148,6 +148,23 @@ class DatabaseAPI:
     @staticmethod
     def find_all_games(user_id):
         collection = db[config['games']]
+
+        orden_status = ["In progress", "In revision", "Completed"] #orden personalizado
+
+        pipeline = [
+            {"$match": {"creator.sub": {"$ne": user_id}}},
+            {
+              "$addFields": {
+                "status_order": { "$indexOfArray": [ orden_status, "$status" ] }
+              }
+            },
+            {"$sort": {"status_order": 1, "date": -1}},
+            {"$project": {"status_order": 0}}
+        ]
+
+        result = list(collection.aggregate(pipeline))
+        return result
+
         query = {"creator.sub": {"$ne": user_id}}
         return collection.find(query).sort('date', -1)
 
