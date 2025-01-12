@@ -428,6 +428,8 @@
                     }
                 }
 
+                showLoadingOverlay();
+
                 var data = {
                     gameName: gameName,
                     area: {
@@ -465,9 +467,8 @@
                             }, 1500);
                         } else {
                             showFeedback(data.message, true);
+                            hideLoadingOverlay();
                         }
-
-
                     })
                     .catch(error => {
                         showFeedback("Error when sending data", true);

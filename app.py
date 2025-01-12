@@ -116,18 +116,17 @@ def game_detail(game_name):
 @app.route('/participate/<string:game_name>')
 def participate(game_name):
     if "user" in session:
-        game = DatabaseAPI.find_game_by_name(game_name)
+        if not DatabaseAPI.exist_game(game_name): # check if game was not delete by creator
+            return jsonify({"message": "Game was deleted. Redirecting to hunt...", "error": True})
 
-        # TODO: check if game was not delete by creator
-        if not game:
-            redirect("/home")
+        game = DatabaseAPI.find_game_by_name(game_name)
 
         status = DatabaseAPI.get_game_status(game_name)
         if status != Status.IN_PROGRESS.value:
-            return redirect(f"/game/{game_name}")
+            return jsonify({"message": "There is already a winner", "error": True})
 
         DatabaseAPI.insert_new_user_game(game, session.get("user")["userinfo"]["sub"], session.get("user")["userinfo"]["given_name"])
-        return redirect(f"/game/{game_name}")
+        return jsonify({"error": False})
     else:
         abort(404)
 
@@ -135,15 +134,16 @@ def participate(game_name):
 @app.route('/unsubscribe/<string:game_name>')
 def unsubscribe(game_name):
     if "user" in session:
-        DatabaseAPI.remove_user_game_by_game_name(game_name, session.get("user")["userinfo"]["sub"])
-
-        # TODO: check if game was not delete by creator
+        if not DatabaseAPI.exist_game(game_name):   # check if game was not delete by creator
+            return jsonify({"message": "Game was deleted. Redirecting to hunt...", "error": True})
 
         status = DatabaseAPI.get_game_status(game_name)
         if status != Status.IN_PROGRESS.value:
-            return redirect(f"/game/{game_name}")
+            return jsonify({"message": "There is already a winner", "error": True})
 
-        return redirect(f"/game/{game_name}")
+        result = DatabaseAPI.remove_user_game_by_game_name(game_name, session.get("user")["userinfo"]["sub"])
+        if result:
+                return jsonify({"error": False})
     else:
         abort(404)
 
@@ -157,10 +157,11 @@ def uploadFoundImage():
             user_id = session.get("user")["userinfo"]["sub"]
             marker_id = data.get('markerId')
             photo = data.get('photo')
+
+            if not DatabaseAPI.exist_game(game_name): # check if game was not delete by creator
+                return jsonify({"message": "Game was deleted. Redirecting to hunt...", "error": True})
+
             user_game = DatabaseAPI.find_user_game_by_game_name(game_name, user_id)
-
-            # TODO: check if game was not delete by creator
-
             status = DatabaseAPI.get_game_status(game_name)
 
             if status != Status.IN_PROGRESS.value:
@@ -186,10 +187,14 @@ def removeUserImage():
             user_id = session.get("user")["userinfo"]["sub"]
             marker_id = data.get('markerId')
 
-            # TODO: check if game was not delete by creator
+            if not DatabaseAPI.exist_game(game_name):  # check if game was not delete by creator
+                return jsonify({"message": "Game was deleted. Redirecting to hunt...", "error": True})
 
-            DatabaseAPI.remove_user_image_from_game(game_name, user_id, marker_id)
-            return redirect(f"/view_game/{game_name}")
+            result = DatabaseAPI.remove_user_image_from_game(game_name, user_id, marker_id)
+            if not result:
+                return jsonify({"message": "Game was reset. Reloading page...", "error": True})
+
+            return jsonify({"error": False})
     else:
         abort(404)
 

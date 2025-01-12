@@ -74,6 +74,10 @@ class DatabaseAPI:
         return collection.count_documents({"name": game_name}) == 1
 
     @staticmethod
+    def exist_game(game_name):
+        return DatabaseAPI.exist_game_name(game_name) == 1
+
+    @staticmethod
     def set_game_in_progress(game_name):
         """
         Set game to In progress and remove winner (not all his answers)

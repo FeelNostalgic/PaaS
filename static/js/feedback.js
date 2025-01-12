@@ -16,6 +16,13 @@
     }, duration);
 }
 
+function hideFeedback() {
+    const feedback = document.getElementById("feedback");
+    feedback.classList.remove("show");
+    feedback.classList.remove("error");
+    feedback.innerHTML = "";
+}
+
 function showLoadingOverlay()
 {
     const loadingOverlay = document.getElementById("loadingOverlay");
