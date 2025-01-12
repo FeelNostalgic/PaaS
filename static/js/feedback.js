@@ -15,3 +15,15 @@
         feedback.classList.remove("show");
     }, duration);
 }
+
+function showLoadingOverlay()
+{
+    const loadingOverlay = document.getElementById("loadingOverlay");
+    loadingOverlay.style.display = "flex";
+}
+
+function hideLoadingOverlay()
+{
+    const loadingOverlay = document.getElementById("loadingOverlay");
+    loadingOverlay.style.display = "none";
+}

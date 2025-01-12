@@ -159,6 +159,7 @@
                         confirmButtonText: 'Yes, confirm it!'
                     }).then((result) => {
                         if (result.isConfirmed) {
+
                             fetch('/unsubscribe/' + gameData.name, {
                                 method: 'GET'
                             });
@@ -167,6 +168,7 @@
                                 '',
                                 'success'
                             ).then(result => {
+                                showLoadingOverlay();
                                 if (result.isConfirmed) {
                                     location.reload();
                                 }
@@ -215,22 +217,8 @@
                                     location.reload();
                                 }, 1500);
                             } else {
-                                /*
-                                var foundButton = document.getElementById(`found-btn-${data.markerId}`);
-                                foundButton.style.display = "none";
                                 var foldout = document.getElementById(`foldout-btn-${data.markerId}`);
                                 foldout.style.background = "green";
-                                var clueText = document.getElementById(`clueText-${data.markerId}`);
-                                if (clueText) clueText.style.display = "none";
-                                var labelPhoto = document.getElementById(`label-photo-${data.markerId}`);
-                                labelPhoto.style.display = "none";
-                                var uploadPhoto = document.getElementById(`upload-photo-${data.markerId}`);
-                                uploadPhoto.style.display = "none";
-                                var box = document.getElementById(`marker-details-${data.markerId}`);
-                                box.style.display = "none";
-                                var postData = document.getElementById(`post-data-${data.markerId}`);
-                                postData.style.display = "block";
-                                 */
                                 L.marker([marker.lat, marker.lng]).addTo(map)
                                     .bindPopup(`Cache #${(markers.indexOf(marker) + 1)} found!`)
                                     .openPopup();
@@ -242,6 +230,8 @@
                                 if (data.refresh) {
                                     showFeedback("YOU ARE THE WINNER!!!. <br>Wait for creator to check your game");
                                 }
+
+                                showLoadingOverlay();
                                 setTimeout(() => {
                                     location.reload();
                                 }, 1500);
@@ -311,6 +301,7 @@
                                 '',
                                 'success'
                             ).then(result => {
+                                showLoadingOverlay();
                                 if (result.isConfirmed) {
                                     location.reload();
                                 }

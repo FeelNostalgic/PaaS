@@ -160,6 +160,7 @@
                             'All players answers have been removed.',
                             'success'
                         ).then(result => {
+                            showLoadingOverlay();
                             if (result.isConfirmed) {
                                 location.reload();
                             }
@@ -184,12 +185,13 @@
                             method: 'GET'
                         });
                         Swal.fire(
-                            'Game reset!',
-                            'All players answers have been removed.',
+                            'Game deleted!',
+                            'Game has been deleted from the database.',
                             'success'
                         ).then(result => {
+                            showLoadingOverlay();
                             if (result.isConfirmed) {
-                                location.reload();
+                                window.location.href = '/huntCreations';
                             }
                         });
                     }
@@ -215,6 +217,7 @@
                             'The winner has been removed.',
                             'success'
                         ).then(result => {
+                            showLoadingOverlay();
                             if (result.isConfirmed) {
                                 location.reload();
                             }
@@ -247,6 +250,7 @@
                             'The winner has been confirmed.',
                             'success'
                         ).then(result => {
+                            showLoadingOverlay();
                             if (result.isConfirmed) {
                                 location.reload();
                             }
@@ -279,6 +283,7 @@
                             '',
                             'success'
                         ).then(result => {
+                            showLoadingOverlay();
                             if (result.isConfirmed) {
                                 location.reload();
                             }
