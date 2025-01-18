@@ -36,7 +36,10 @@
                         <button id="foldout-btn-winner" class="foldout-btn" onclick="toggleWinnerDetails()">WINNER</button>
                         <div id="winner-markers-details" class="marker-details" style="display: none;">
                             {% for marker in game.winnerMarkers %}
-                                <p>Cache #{{ loop.index }}</p>
+                                <div style="margin-top: 5px;">
+                                    <span>Cache #{{ loop.index }}</span>
+                                    <span style="font-size: smaller; float: right;">{{ marker.date.strftime("%Y-%m-%d %H:%M") }}</span>
+                                </div>
                                 <p><img src="{{ marker.image }}" alt="Player Image" style="max-width: 100px;"></p>
                             {% endfor %}
                             {% if game.status == "In revision" %}
@@ -91,6 +94,7 @@
 
         <!-- Incluir Leaflet JS -->
         <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+        <!-- Incluir SweetAlert2 JS -->
         <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
         <script>
