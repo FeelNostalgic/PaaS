@@ -1,10 +1,23 @@
 # See https://fly.io/docs/app-guides/continuous-deployment-with-github-actions/
+#
+# This project was deployed to Fly.io in January 2025 and that app no longer
+# exists. The workflow is kept here as a record of how the deployment was done,
+# and is manual-only so that pushing to main no longer produces a red build.
+#
+# To bring it back, do all three of these:
+#   1. Create the app:        fly apps create <name>
+#   2. Point at it:           set `app` in fly.toml to <name>
+#   3. Add the secret:        gh secret set FLY_API_TOKEN
+# then restore automatic deploys by changing `on:` to:
+#
+#   on:
+#     push:
+#       branches:
+#         - main
 
 name: Fly Deploy
 on:
-  push:
-    branches:
-      - main
+  workflow_dispatch:
 jobs:
   deploy:
     name: Deploy app

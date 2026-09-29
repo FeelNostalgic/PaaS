@@ -85,9 +85,9 @@ winner, pending the creator's validation.
 **Frontend** — server-rendered Jinja2 templates, vanilla JS, no build step, no bundler.
 Leaflet 1.7.1, Leaflet.draw 1.0.4, SweetAlert2 11 — all loaded from a CDN.
 **Database** — MongoDB (two collections: `Games` and `User_games`).
-**Infrastructure** — Docker on Fly.io, region `fra`, 1 GB RAM / 1 shared CPU,
-continuous deployment from GitHub Actions. The infrastructure is configured but
-currently torn down; see [Current status](#current-status).
+**Infrastructure** — Docker on Fly.io, region `fra`, 1 GB RAM / 1 shared CPU, with the
+deploy workflow in `.github/workflows/fly-deploy.yml`. The infrastructure is configured
+but currently torn down; see [Current status](#current-status).
 
 There is no client-side toolchain. If you change a template, refresh the page.
 
@@ -347,14 +347,23 @@ fly secrets set SECRET_KEY=... CLIENT_ID=... CLIENT_SECRET=... MONGODB_URI=...
 Then update the OAuth redirect URI in Google Cloud to
 `https://<your-app-name>.fly.dev/auth/callback`.
 
-**Manual deploy**
+**Deploying from GitHub Actions**
 
-**Continuous deployment**
+`.github/workflows/fly-deploy.yml` is kept as a record of how this app was deployed, but
+it is **manual-only**: its trigger is `workflow_dispatch`, not `push`. Nothing runs when
+code is pushed, which is deliberate — the project is dormant and pushing should not leave
+a red build on a public repository.
 
-`.github/workflows/fly-deploy.yml` deploys on every push to `main`. Add `FLY_API_TOKEN`
-as a repository secret on GitHub to enable it. Generate the token with
-`fly auth token`. To redeploy an existing commit without pushing, re-run the workflow
-from the Actions tab.
+To run it, open the Actions tab, pick *Fly Deploy*, and hit *Run workflow*. It needs
+`FLY_API_TOKEN` set as a repository secret, which it currently is not. Generate a token
+with `fly auth token`, then:
+
+```bash
+gh secret set FLY_API_TOKEN
+```
+
+Restoring automatic deploys on push means changing the `on:` block back to a `push` on
+`main`. The workflow file documents this inline.
 
 **Docker directly**
 
